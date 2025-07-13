@@ -2,6 +2,10 @@
   "architectures": [
     "Qwen2_5_VLForConditionalGeneration"
   ],
+  "auto_map": {
+    "AutoModel": "modeling_qwen2_5_vl_mspe.Qwen2_5_VLForConditionalGeneration",
+    "AutoModelForCausalLM": "modeling_qwen2_5_vl_mspe.Qwen2_5_VLForConditionalGeneration"
+  },
   "attention_dropout": 0.0,
   "bos_token_id": 151643,
   "eos_token_id": 151645,
