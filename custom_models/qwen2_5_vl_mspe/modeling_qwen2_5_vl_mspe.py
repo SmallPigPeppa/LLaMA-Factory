@@ -1800,7 +1800,6 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
         self.lm_head = nn.Linear(config.text_config.hidden_size, config.text_config.vocab_size, bias=False)
 
         self.post_init()
-        print("HERE !!!!!!!!")
 
     def get_input_embeddings(self):
         return self.model.get_input_embeddings()

@@ -3,6 +3,7 @@
     "Qwen2_5_VLForConditionalGeneration"
   ],
   "auto_map": {
+    "AutoConfig": "configuration_qwen2_5_vl.Qwen2_5_VLConfig",
     "AutoModel": "modeling_qwen2_5_vl_mspe.Qwen2_5_VLForConditionalGeneration",
     "AutoModelForCausalLM": "modeling_qwen2_5_vl_mspe.Qwen2_5_VLForConditionalGeneration"
   },
