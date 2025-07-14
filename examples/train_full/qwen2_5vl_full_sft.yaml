@@ -31,7 +31,6 @@ plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
 report_to: wandb  # choices: [none, wandb, tensorboard, swanlab, mlflow]
-project_name: llama-factory
 run_name: qwen2.5-vl
 
 ### train
