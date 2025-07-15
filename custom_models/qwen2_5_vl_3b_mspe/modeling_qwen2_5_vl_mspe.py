@@ -1658,6 +1658,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
         if inputs_embeds is None:
             inputs_embeds = self.get_input_embeddings()(input_ids)
             if pixel_values is not None:
+                import pdb;pdb.set_trace()
                 image_embeds = self.get_image_features(pixel_values, image_grid_thw)
                 n_image_tokens = (input_ids == self.config.image_token_id).sum().item()
                 n_image_features = image_embeds.shape[0]
@@ -1905,7 +1906,6 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
         )
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        print("HERE !!!!!!!!")
         outputs = self.model(
             input_ids=input_ids,
             pixel_values=pixel_values,
