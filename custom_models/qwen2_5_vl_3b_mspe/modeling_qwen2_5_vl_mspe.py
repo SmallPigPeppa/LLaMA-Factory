@@ -93,7 +93,7 @@ class Qwen2_5_VisionPatchEmbed(nn.Module):
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         target_dtype = self.proj.weight.dtype
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         hidden_states = hidden_states.view(
             -1, self.in_channels, self.temporal_patch_size, self.patch_size, self.patch_size
         )
