@@ -15,7 +15,8 @@ freeze_language_model: false
 deepspeed: examples/deepspeed/ds_z3_config.json
 
 ### dataset
-dataset: mllm_demo,identity,alpaca_en_demo
+#dataset: mllm_demo,identity,alpaca_en_demo
+dataset: llava_150k_en
 template: qwen2_vl
 cutoff_len: 2048
 max_samples: 1000
