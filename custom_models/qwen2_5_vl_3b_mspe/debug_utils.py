@@ -2,33 +2,6 @@ from typing import List, Tuple
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-
-def generate_window_indices(
-        img_shape: Tuple[int, int],
-        window_size: int,
-        base_patchsize: int
-) -> List[List[int]]:
-    """
-    Partition the img patch grid into square windows of size `window_size`,
-    returning for each window the list of valid flat indices (row-major).
-    Supports edge windows that may be truncated.
-    """
-    rows, cols = img_shape
-    step = window_size // base_patchsize
-    windows = []
-    for r0 in range(0, rows, step):
-        for c0 in range(0, cols, step):
-            idxs: List[int] = []
-            for dr in range(step):
-                for dc in range(step):
-                    rr, cc = r0 + dr, c0 + dc
-                    if 0 <= rr < rows and 0 <= cc < cols:
-                        idxs.append(rr * cols + cc)
-            if idxs:
-                windows.append(idxs)
-    return windows
-
-
 def compute_window_patch_xy_coords(
         window_indices: List[List[int]],
         patch_sizes: List[int],
@@ -70,6 +43,35 @@ def compute_window_patch_xy_coords(
         centers_all.append(centers)
 
     return centers_all
+
+
+def generate_window_indices(
+        img_shape: Tuple[int, int],
+        window_size: int,
+        base_patchsize: int
+) -> List[List[int]]:
+    """
+    Partition the img patch grid into square windows of size `window_size`,
+    returning for each window the list of valid flat indices (row-major).
+    Supports edge windows that may be truncated.
+    """
+    rows, cols = img_shape
+    step = window_size // base_patchsize
+    windows = []
+    for r0 in range(0, rows, step):
+        for c0 in range(0, cols, step):
+            idxs: List[int] = []
+            for dr in range(step):
+                for dc in range(step):
+                    rr, cc = r0 + dr, c0 + dc
+                    if 0 <= rr < rows and 0 <= cc < cols:
+                        idxs.append(rr * cols + cc)
+            if idxs:
+                windows.append(idxs)
+    return windows
+
+
+
 
 
 def visualize_windows(
