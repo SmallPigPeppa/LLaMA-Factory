@@ -144,6 +144,14 @@ def forward_mspe(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> t
     window_index_list, cu_window_seqlens, window_adp_patchsize = self.get_window_index_and_patchsizes(
         hidden_states, grid_thw
     )
+    patch_xy_coords = self.compute_window_patch_xy_coords(
+        window_index_list=window_index_list,
+        window_adp_patchsize=window_adp_patchsize,
+        base_patchsize=self.patch_size,
+        min_patchsize=7,
+        window_size=112,
+        grid_hw=(grid_thw[:, -2], grid_thw[:, -1]))
+
     rotary_pos_emb = self.rot_pos_emb(grid_thw)
 
     hidden_states_list = []

@@ -3,22 +3,22 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 def compute_window_patch_xy_coords(
-        window_indices: List[List[int]],
-        patch_sizes: List[int],
+        window_index_list: List[List[int]],
+        window_adp_patchsize: List[int],
         base_patchsize: int,
         min_patchsize: int,
         window_size: int,
-        img_shape: Tuple[int, int]
+        grid_hw: Tuple[int, int]
 ) -> List[List[Tuple[float, float]]]:
     """
     For each window, compute center (x,y) of its sub-patches,
     normalized to the finest grid (min_patchsize).
     Supports windows truncated at image edges.
     """
-    rows, cols = img_shape
-    centers_all: List[List[Tuple[float, float]]] = []
+    rows, cols = grid_hw
+    patch_xy_coords = []
 
-    for idxs, p in zip(window_indices, patch_sizes):
+    for idxs, p in zip(window_index_list, window_adp_patchsize):
         # determine top-left of this window in grid coords
         flat0 = idxs[0]
         r0, c0 = divmod(flat0, cols)
@@ -31,18 +31,18 @@ def compute_window_patch_xy_coords(
         nx = int(win_w // p)
         ny = int(win_h // p)
 
-        centers: List[Tuple[float, float]] = []
+        window_patch_xy_coords = []
         for iy in range(ny):
             for ix in range(nx):
                 x_phys = c0 * base_patchsize + (ix + 0.5) * p
                 y_phys = r0 * base_patchsize + (iy + 0.5) * p
                 x = x_phys / min_patchsize - 0.5
                 y = y_phys / min_patchsize - 0.5
-                centers.append((x, y))
+                window_patch_xy_coords.append((x, y))
 
-        centers_all.append(centers)
+        patch_xy_coords.append(window_patch_xy_coords)
 
-    return centers_all
+    return patch_xy_coords
 
 
 def generate_window_indices(
