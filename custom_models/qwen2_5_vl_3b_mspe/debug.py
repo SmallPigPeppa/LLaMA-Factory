@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> torch.Tensor:
     """
@@ -62,7 +62,7 @@ def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> torch.
     return hidden_states
 
 
-def forward_mspe(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> torch.Tensor:
+def forward_mspe(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Args:
         hidden_states (`torch.Tensor` of shape `(seq_len, hidden_size)`):
@@ -99,6 +99,7 @@ def forward_mspe(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> t
     # 4. compute per window
     hidden_states_list = []
     pos_emb_list = []
+    grid_itxy_list = []
     window_seqlens_list = []
     window_imgidx_list = []
     for i, (window_idx, window_patchsize, window_grid_thw) in enumerate(
@@ -130,6 +131,7 @@ def forward_mspe(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> t
         pos_emb_list.append(window_pos_emb)
         window_seqlens_list.append(len(window_grid_itxy))
         window_imgidx_list.append(window_grid_itxy[0, 0])
+        grid_itxy_list.append(window_grid_itxy)
 
     # update cu_window_seqlens
     update_cu_window_seqlens = torch.tensor([0] + list(torch.cumsum(torch.tensor(window_seqlens_list), dim=0)))
@@ -150,11 +152,10 @@ def forward_mspe(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> t
     hidden_states = torch.cat(hidden_states_list, dim=0)
     pos_emb = torch.cat(pos_emb_list, dim=0)
 
-
     for layer_num, blk in enumerate(self.blocks):
         position_embeddings = rotary_pos_emb
         if layer_num in self.fullatt_block_indexes:
-            cu_seqlens_now =  update_cu_seqlens
+            cu_seqlens_now = update_cu_seqlens
         else:
             cu_seqlens_now = update_cu_window_seqlens
         if self.gradient_checkpointing and self.training:
@@ -169,7 +170,7 @@ def forward_mspe(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> t
     reverse_indices = self.get_reverse_indices(patch_xy_list)
     hidden_states = hidden_states[reverse_indices, :]
 
-    return hidden_states
+    return hidden_states, grid_itxy_list
 
     # patch_xy_coords = self.compute_window_patch_xy_coords(
     #     window_index_list=window_index_list,
