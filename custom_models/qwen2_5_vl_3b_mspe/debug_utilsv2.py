@@ -153,8 +153,10 @@ def recompute_grid_xy(grid_txy: torch.Tensor, old_patchsize: int, new_patchsize:
     t, x, y = grid_txy[:, 0], grid_txy[:, 1], grid_txy[:, 2]
 
     if new_patchsize == old_patchsize:
-        new_x = x * 2 + 0.5
-        new_y = y * 2 + 0.5
+        # new_x = x * 2 + 0.5
+        # new_y = y * 2 + 0.5
+        new_x = x * 2
+        new_y = y * 2
         new_grid_txy = torch.stack([t, new_x, new_y], dim=1)
 
     elif new_patchsize == old_patchsize // 2:
@@ -166,8 +168,10 @@ def recompute_grid_xy(grid_txy: torch.Tensor, old_patchsize: int, new_patchsize:
                 coords.append(torch.stack([t, new_x, new_y], dim=1))
         new_grid_txy = torch.cat(coords, dim=0)
     else:  # new_patchsize == old_patchsize * 2
-        small_x = x * 2 + 0.5
-        small_y = y * 2 + 0.5
+        # small_x = x * 2 + 0.5
+        # small_y = y * 2 + 0.5
+        small_x = x.to(torch.float) * 2
+        small_y = y.to(torch.float) * 2
 
         group_coords = {}
         for i in range(len(grid_txy)):
