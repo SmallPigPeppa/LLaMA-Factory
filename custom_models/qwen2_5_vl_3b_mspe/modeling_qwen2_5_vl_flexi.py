@@ -2221,6 +2221,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
         if inputs_embeds is None:
             inputs_embeds = self.get_input_embeddings()(input_ids)
             if pixel_values is not None:
+                import pdb;pdb.set_trace()
                 image_embeds, grid_txy_list = self.get_image_features(pixel_values, image_grid_thw)
                 position_ids = self.update_position_ids(position_ids=position_ids,grid_txy_list=grid_txy_list)
                 inputs_embeds, input_ids, attention_mask, labels = update_input_embeds_ids_masks_labels(
@@ -2236,7 +2237,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
                 if any(x is not None for x in [past_key_values, use_cache, cache_position]):
                     import pdb;pdb.set_trace()
 
-                import pdb;pdb.set_trace()
+
                 n_image_tokens = (input_ids == self.config.image_token_id).sum().item()
                 n_image_features = image_embeds.shape[0]
                 if n_image_tokens != n_image_features:
