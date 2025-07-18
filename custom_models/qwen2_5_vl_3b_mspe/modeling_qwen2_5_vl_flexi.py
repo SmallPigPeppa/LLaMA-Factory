@@ -2443,6 +2443,7 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
         logits = self.lm_head(hidden_states)
 
         loss = None
+        import pdb;pdb.set_trace()
         if labels is not None:
             loss = self.loss_function(logits=logits, labels=labels, vocab_size=self.config.vocab_size)
 
