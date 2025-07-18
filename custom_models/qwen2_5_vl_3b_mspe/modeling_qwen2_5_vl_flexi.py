@@ -909,8 +909,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
         )
         cu_window_seqlens = torch.unique_consecutive(cu_window_seqlens)
-        cu_merge = (cu_window_seqlens // self.spatial_merge_unit).cpu().tolist()
-        window_index_list = [window_index[start:end] for start, end in zip(cu_merge[:-1], cu_merge[1:])]
+        # cu_merge = (cu_window_seqlens // self.spatial_merge_unit).cpu().tolist()
+        # window_index_list = [window_index[start:end] for start, end in zip(cu_merge[:-1], cu_merge[1:])]
 
         # 2. get window patchsize and itxy coords
         # window_patchsize_list, window_grid_thw_list = self.get_window_patchsize(grid_thw)
@@ -2284,7 +2284,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             cache_position=cache_position,
         )
         # import pdb;pdb.set_trace()
-        print(f'rope_deltas={self.rope_deltas}')
+        # print(f'rope_deltas={self.rope_deltas}')
         output = Qwen2_5_VLModelOutputWithPast(
             last_hidden_state=outputs.last_hidden_state,
             past_key_values=outputs.past_key_values,
