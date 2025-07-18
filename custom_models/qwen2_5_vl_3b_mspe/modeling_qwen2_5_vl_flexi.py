@@ -903,7 +903,6 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         # 1. get window index and cu_window_seqlens
         window_index, cu_window_seqlens = self.get_window_index(grid_thw)
-        import pdb; pdb.set_trace()
         cu_window_seqlens = torch.tensor(
             cu_window_seqlens,
             device=hidden_states.device,
