@@ -965,7 +965,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                 grid_ityx=window_grid_itxy,
                 new_patchsize=window_patchsize
             )
-            window_grid_itxy = window_grid_itxy[update_window_flatten_to_merge_idx]  # flatten to merge
+            window_grid_itxy = window_grid_itxy  # flatten to merge
 
             pos_index = self.itxy_to_pos_index(grid_thw=tmp_grid_thw, grid_itxy=window_grid_itxy)
             window_pos_emb = (position_embeddings[0][pos_index], position_embeddings[1][pos_index])
