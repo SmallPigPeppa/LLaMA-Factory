@@ -881,8 +881,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             window_grid_itxy = grid_itxy_coords.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
             window_grid_itxy = window_grid_itxy[window_idx, :, :]
             window_grid_itxy = window_grid_itxy.reshape(len(window_idx) * self.spatial_merge_unit, -1)
-            window_grid_itxy = self.recompute_grid_itxy(
-                grid_txy=window_grid_itxy,
+            window_grid_itxy = self.recompute_grid_ityx(
+                grid_ityx=window_grid_itxy,
                 new_patchsize=window_patchsize
             )
             flatten_index = self.itxy_to_flatten_index(grid_thw=tmp_grid_thw, grid_itxy=window_grid_itxy)
