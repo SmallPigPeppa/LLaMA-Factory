@@ -875,6 +875,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                 grid_thw=window_grid_thw,
                 new_patch_size=window_patchsize
             )
+            import pdb;pdb.set_trace()
             window_patch_embed = self.patch_embed(window_hidden_states, patch_size=window_patchsize)
 
             # window pos_embed
