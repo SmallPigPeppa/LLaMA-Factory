@@ -1068,7 +1068,7 @@ class Qwen2_5_VLModelOutputWithPast(ModelOutput):
     hidden_states: Optional[Tuple[torch.FloatTensor]] = None
     attentions: Optional[Tuple[torch.FloatTensor]] = None
     rope_deltas: Optional[torch.LongTensor] = None
-    labels: Optional[torch.LongTensor] = None,
+    labels: Optional[torch.LongTensor] = None
 
 
 class Qwen2_5_VLRotaryEmbedding(nn.Module):
