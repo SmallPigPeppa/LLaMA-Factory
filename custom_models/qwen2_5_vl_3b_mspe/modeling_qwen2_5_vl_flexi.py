@@ -1020,9 +1020,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         np_itxy = grid_itxy.cpu().numpy()
         sorted_indices = np.lexsort((np_itxy[:, 3], np_itxy[:, 2], np_itxy[:, 1], np_itxy[:, 0]))
         sorted_indices = torch.from_numpy(sorted_indices).to(hidden_states.device)
-        hidden_states = hidden_states[sorted_indices]
-
         import pdb;pdb.set_trace()
+        hidden_states = hidden_states[sorted_indices]
         reverse_indices = self.get_reverse_indices(patch_xy_list)
         hidden_states = hidden_states[reverse_indices, :]
 
