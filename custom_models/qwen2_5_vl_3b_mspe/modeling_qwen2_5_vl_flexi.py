@@ -31,7 +31,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from jsonargparse_tests.test_subclasses import dtype
 
 from transformers.activations import ACT2FN
 from transformers.cache_utils import Cache, DynamicCache, SlidingWindowCache, StaticCache
@@ -745,9 +745,10 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             .contiguous() \
             .view(-1, C, t_ps, new_patch_size, new_patch_size)
         new_pixel_value = patches.view(patches.size(0), -1)
-        new_grid_thw = torch.Tensor([T, Hn, Wn], device=grid_thw.device)
+        new_grid_thw = torch.tensor([T, Hn, Wn], device=grid_thw.device, dtype=torch.long)
 
         return new_pixel_value, new_grid_thw
+
 
     def recompute_grid_ityx(self, grid_ityx: torch.Tensor, new_patchsize: int) -> torch.Tensor:
         """
@@ -921,7 +922,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         tmp_grid_thw[:, 1:] = tmp_grid_thw[:, 1:] * 2
         rotary_pos_emb = self.rot_pos_emb(tmp_grid_thw)
         tmp_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=tmp_grid_thw, merge_size=2)
-        rotary_pos_emb = rotary_pos_emb[tmp_merge_to_flatten_idx] # merge index to flatten
+        rotary_pos_emb = rotary_pos_emb[tmp_merge_to_flatten_idx]  # merge index to flatten
         emb = torch.cat((rotary_pos_emb, rotary_pos_emb), dim=-1)
         position_embeddings = (emb.cos(), emb.sin())
 
@@ -937,23 +938,21 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                 zip(window_index_list, window_patchsize_list, window_grid_thw_list)):
             # window patch_embed
             seq_len, _ = hidden_states.shape
-            window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,-1)
+            window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,
+                                                         -1)
             window_hidden_states = window_hidden_states[window_idx, :, :]
             window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
 
             # merge to flatten (for repatchify)
             window_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=window_grid_thw.unsqueeze(0), merge_size=2)
             window_hidden_states = window_hidden_states[window_merge_to_flatten_idx]
-            window_hidden_states, window_grid_thw = self.repatchify(
+            window_hidden_states, update_window_grid_thw = self.repatchify(
                 pixel_value=window_hidden_states,
                 grid_thw=window_grid_thw,
                 new_patch_size=window_patchsize
             )
 
             # flatten to merge (for patch embedding)
-            update_window_grid_thw = window_grid_thw.clone()
-            update_window_grid_thw[1:] = (update_window_grid_thw[1:] * window_patchsize / self.patch_size).to(dtype=torch.long)
-            import pdb; pdb.set_trace()
             update_window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=update_window_grid_thw.unsqueeze(0),merge_size=2)
             window_hidden_states = window_hidden_states[update_window_flatten_to_merge_idx]
             window_patch_embed = self.patch_embed(window_hidden_states, patch_size=window_patchsize)
