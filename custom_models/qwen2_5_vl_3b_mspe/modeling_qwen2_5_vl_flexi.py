@@ -967,6 +967,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         #     # update_window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=update_window_grid_thw.unsqueeze(0),merge_size=self.spatial_merge_size)
         #     # window_hidden_states = window_hidden_states[update_window_flatten_to_merge_idx]
             window_patch_embed = self.patch_embed(window_hidden_states)
+            hidden_states_list.append(window_patch_embed)
         #
         #     # window pos_embed
         #     window_grid_itxy = grid_itxy_coords.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
@@ -985,7 +986,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         #     emb = torch.cat(( window_rotary_pos_emb,  window_rotary_pos_emb), dim=-1)
         #     window_pos_emb = (emb.cos(), emb.sin())
         #
-            hidden_states_list.append(window_patch_embed)
+
         #     pos_emb_list.append(window_pos_emb)
         #     window_seqlens_list.append(len(window_grid_itxy))
         #     window_imgidx_list.append(window_grid_itxy[0, 0])
