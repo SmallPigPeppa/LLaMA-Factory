@@ -813,10 +813,10 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             new_grid = torch.tensor(new_coords, device=grid_ityx.device)
 
         # Sort by image_idx, then t, then x, then y
-        itxy = new_grid.cpu().numpy()
-        sorted_indices = np.lexsort((itxy[:, 3], itxy[:, 2], itxy[:, 1], itxy[:, 0]))
-        sorted_indices = torch.from_numpy(sorted_indices).to(new_grid.device)
-        new_grid = new_grid[sorted_indices]
+        # itxy = new_grid.cpu().numpy()
+        # sorted_indices = np.lexsort((itxy[:, 3], itxy[:, 2], itxy[:, 1], itxy[:, 0]))
+        # sorted_indices = torch.from_numpy(sorted_indices).to(new_grid.device)
+        # new_grid = new_grid[sorted_indices]
 
         return new_grid
 
@@ -1020,12 +1020,13 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         grid_itxy = grid_itxy[:, 0, :]
 
         # Sort by image_idx, then t, then x, then y
-        np_itxy = grid_itxy.cpu().numpy()
-        sorted_indices = np.lexsort((np_itxy[:, 3], np_itxy[:, 2], np_itxy[:, 1], np_itxy[:, 0]))
-        sorted_indices = torch.from_numpy(sorted_indices).to(hidden_states.device)
+        # np_itxy = grid_itxy.cpu().numpy()
+        # sorted_indices = np.lexsort((np_itxy[:, 3], np_itxy[:, 2], np_itxy[:, 1], np_itxy[:, 0]))
+        # sorted_indices = torch.from_numpy(sorted_indices).to(hidden_states.device)
         # import pdb;pdb.set_trace()
-        hidden_states = hidden_states[sorted_indices]
-        token_itxy = grid_itxy[sorted_indices]
+        # hidden_states = hidden_states[sorted_indices]
+        # token_itxy = grid_itxy[sorted_indices]
+        token_itxy = grid_itxy
         # update xy from (i, t, x, y)
         token_itxy[:, 2:] = (token_itxy[:, 2:] // self.spatial_merge_size)
         image_idxs = token_itxy[:, 0]
