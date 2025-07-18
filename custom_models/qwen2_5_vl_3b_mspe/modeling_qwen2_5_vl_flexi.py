@@ -133,7 +133,9 @@ def pi_resize3d(
     out_ch, in_ch, depth, h, w = conv_weight.shape
     h_new, w_new = to_2tuple(target_size)
     device = conv_weight.device
-    dtype = conv_weight.dtype
+    weight_dtype=conv_weight.dtype
+    float_dtype = torch.float
+    conv_weight.to(dtype=float_dtype)
 
     # no-op if same spatial size
     if (h, w) == (h_new, w_new):
@@ -152,7 +154,7 @@ def pi_resize3d(
     def _make_pinv(old: Tuple[int, int], new: Tuple[int, int]) -> torch.Tensor:
         mats = []
         for i in range(old[0] * old[1]):
-            basis = torch.zeros(old, device=device, dtype=dtype)
+            basis = torch.zeros(old, device=device, dtype=float_dtype)
             basis.view(-1)[i] = 1.0
             mats.append(_resize2d(basis).view(-1))
         M = torch.stack(mats, dim=0)  # [H*W, H'*W']
@@ -164,7 +166,7 @@ def pi_resize3d(
     flat = conv_weight.view(-1, h * w)  # [O*I*D, H*W]
     resized_flat = flat @ pinv.t()  # [O*I*D, H'*W']
     # reshape back to 5D
-    return resized_flat.view(out_ch, in_ch, depth, h_new, w_new)
+    return resized_flat.view(out_ch, in_ch, depth, h_new, w_new).to(dtype=weight_dtype)
 
 
 class Qwen2_5_VisionPatchEmbedFlexi(nn.Module):
@@ -2094,8 +2096,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
 
             if attention_mask is not None:
                 attention_mask = attention_mask.to(inputs_embeds.device)
-        import pdb;
-        pdb.set_trace()
+        import pdb;pdb.set_trace()
         # if we get 4D attention mask we cannot calculate rope deltas anymore. TODO @raushan fixme
         if position_ids is None and (attention_mask is None or attention_mask.ndim == 2):
             # calculate RoPE index once per generation in the pre-fill stage only
