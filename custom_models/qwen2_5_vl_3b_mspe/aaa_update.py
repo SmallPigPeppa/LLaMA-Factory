@@ -87,7 +87,7 @@ def update_input_embeds_ids_masks_labels(
     return new_embeds, new_ids, new_att_mask, new_labels
 
 
-def update_position_ids(position_ids, grid_txy_list):
+def update_position_ids(position_ids, grid_txy_list, ids, img_id):
     """
     position_ids: torch tensor, shape [3, batch, max_len]
     grid_txy_list: list of torch.Tensor, 每个样本grid_txy: [n_img_token, 3]
@@ -103,11 +103,10 @@ def update_position_ids(position_ids, grid_txy_list):
         n_img_token = grid_txy.shape[0]
 
         # 1. 找到“图像”部分
-        uniq, counts = torch.unique(pos_ids[0][pos_ids[0] != 1], return_counts=True)
-        img_id = uniq[counts.argmax()]
-        img_mask = (pos_ids[0] == img_id)
-        img_start = img_mask.nonzero(as_tuple=True)[0][0].item()
-        img_end = img_mask.nonzero(as_tuple=True)[0][-1].item() + 1
+        t_row = ids[b]
+        mask = (t_row == img_id)
+        idx = mask.nonzero(as_tuple=True)[0]
+        img_start, img_end = idx[0].item(), idx[-1].item() + 1
 
         # 2. 占位符种类数
         Z = max(
