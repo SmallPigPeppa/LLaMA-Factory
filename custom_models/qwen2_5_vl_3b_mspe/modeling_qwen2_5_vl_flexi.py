@@ -918,6 +918,9 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                 grid_ityx=window_grid_itxy,
                 new_patchsize=window_patchsize
             )
+            window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=window_grid_thw, merge_size=2)
+            window_grid_itxy = window_grid_itxy[window_flatten_to_merge_idx]
+
             flatten_index = self.itxy_to_flatten_index(grid_thw=tmp_grid_thw, grid_itxy=window_grid_itxy)
             window_pos_emb = (position_embeddings[0][flatten_index], position_embeddings[1][flatten_index])
 
@@ -930,13 +933,21 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         import pdb;
         pdb.set_trace()
 
+        # concate hidden_states pos_emb
+        hidden_states = torch.cat(hidden_states_list, dim=0)
+        pos_tensor_1 = torch.cat([x[0] for x in pos_emb_list], dim=0)
+        pos_tensor_2 = torch.cat([x[1] for x in pos_emb_list], dim=0)
+        pos_emb = (pos_tensor_1, pos_tensor_2)
+        grid_itxy = torch.cat(grid_itxy_list, dim=0)
+
         # update cu_window_seqlens
         update_cu_window_seqlens = torch.tensor([0] + list(torch.cumsum(torch.tensor(window_seqlens_list), dim=0)))
 
         # update cu_seqlens
         num_images = max(window_imgidx_list) + 1
-        update_cu_seqlens = torch.zeros(num_images + 1, dtype=torch.int32, device=update_cu_window_seqlens.device)
-        window_imgidx_tensor = torch.tensor(window_imgidx_list, device=update_cu_window_seqlens.device)
+        update_cu_seqlens = torch.zeros(num_images + 1, dtype=torch.long, device=update_cu_window_seqlens.device)
+        window_imgidx_tensor = torch.tensor(window_imgidx_list, dtype=torch.long,
+                                            device=update_cu_window_seqlens.device)
         update_cu_seqlens.scatter_reduce_(
             0,
             window_imgidx_tensor + 1,
@@ -945,27 +956,23 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         )
         update_cu_seqlens = update_cu_seqlens.cumsum(dim=0)
 
-        # concate hidden_states pos_emb
-        hidden_states = torch.cat(hidden_states_list, dim=0)
-        pos_emb = torch.cat(pos_emb_list, dim=0)
-
         for layer_num, blk in enumerate(self.blocks):
-            position_embeddings = rotary_pos_emb
             if layer_num in self.fullatt_block_indexes:
                 cu_seqlens_now = update_cu_seqlens
             else:
                 cu_seqlens_now = update_cu_window_seqlens
             if self.gradient_checkpointing and self.training:
                 hidden_states = self._gradient_checkpointing_func(
-                    blk.__call__, hidden_states, cu_seqlens_now, None, position_embeddings
+                    blk.__call__, hidden_states, cu_seqlens_now, None, pos_emb
                 )
             else:
-                hidden_states = blk(hidden_states, cu_seqlens=cu_seqlens_now, position_embeddings=position_embeddings)
+                hidden_states = blk(hidden_states, cu_seqlens=cu_seqlens_now, position_embeddings=pos_emb)
 
         hidden_states = self.merger(hidden_states)
         # reverse_indices = torch.argsort(window_index)
-        grid_itxy_list = grid_itxy_list.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
-        grid_itxy_list = grid_itxy_list[:, 0, :]
+        update_seq_len = grid_itxy.shape[0]
+        grid_itxy = grid_itxy.reshape(update_seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
+        grid_itxy = grid_itxy[:, 0, :]
         reverse_indices = self.get_reverse_indices(patch_xy_list)
         hidden_states = hidden_states[reverse_indices, :]
 
