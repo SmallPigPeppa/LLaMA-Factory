@@ -715,7 +715,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             new_grid_thw:     [T, H', W'] tensor
         """
         T, H, W = int(grid_thw[0]), int(grid_thw[1]), int(grid_thw[2])
-        C, t_ps, old_ps = self.in_channels, self.temporal_patch_size, self.patch_size
+        C, t_ps, old_ps = self.patch_embed.in_channels, self.temporal_patch_size, self.patch_size
 
         # reconstruct volume [C, T, H*ps, W*ps]
         x = pixel_value.view(H, W, C, t_ps, old_ps, old_ps)
