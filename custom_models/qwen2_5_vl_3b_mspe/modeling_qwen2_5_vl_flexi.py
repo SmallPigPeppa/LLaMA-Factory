@@ -196,9 +196,11 @@ class Qwen2_5_VisionPatchEmbedFlexi(nn.Module):
             interpolation="bicubic",
             antialias=True,
         )
+        import pdb; pdb.set_trace()
         # hidden_states = self.proj(hidden_states.to(dtype=target_dtype)).view(-1, self.embed_dim)
-        hidden_states = F.conv3d(hidden_states.to(dtype=target_dtype), resized_weight, bias=self.proj.bias,
-                                 stride=patch_size).view(-1, self.embed_dim)
+        hidden_states = F.conv3d(
+            hidden_states.to(dtype=target_dtype), resized_weight, bias=self.proj.bias, stride=patch_size
+        ).view(-1, self.embed_dim)
 
         return hidden_states
 
@@ -590,7 +592,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         Returns:
             `torch.Tensor`: hidden_states.
         """
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
         hidden_states = self.patch_embed(hidden_states)
         rotary_pos_emb = self.rot_pos_emb(grid_thw)
         window_index, cu_window_seqlens = self.get_window_index(grid_thw)
@@ -891,12 +894,14 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         grid_itxy_list = []
         window_seqlens_list = []
         window_imgidx_list = []
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
         for i, (window_idx, window_patchsize, window_grid_thw) in enumerate(
                 zip(window_index_list, window_patchsize_list, window_grid_thw_list)):
             # window patch_embed
             seq_len, _ = hidden_states.shape
-            window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,-1)
+            window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,
+                                                         -1)
             window_hidden_states = window_hidden_states[window_idx, :, :]
             window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
             window_hidden_states, window_grid_thw = self.repatchify(
@@ -923,7 +928,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             window_imgidx_list.append(window_grid_itxy[0, 0])
             grid_itxy_list.append(window_grid_itxy)
 
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
 
         # update cu_window_seqlens
         update_cu_window_seqlens = torch.tensor([0] + list(torch.cumsum(torch.tensor(window_seqlens_list), dim=0)))
@@ -2125,7 +2131,8 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
 
             if attention_mask is not None:
                 attention_mask = attention_mask.to(inputs_embeds.device)
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
         # if we get 4D attention mask we cannot calculate rope deltas anymore. TODO @raushan fixme
         if position_ids is None and (attention_mask is None or attention_mask.ndim == 2):
             # calculate RoPE index once per generation in the pre-fill stage only
