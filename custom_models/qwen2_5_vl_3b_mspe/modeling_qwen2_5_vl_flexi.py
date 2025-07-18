@@ -2255,7 +2255,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             return_dict=True,
             cache_position=cache_position,
         )
-
+        import pdb;pdb.set_trace()
         output = Qwen2_5_VLModelOutputWithPast(
             last_hidden_state=outputs.last_hidden_state,
             past_key_values=outputs.past_key_values,
