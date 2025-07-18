@@ -196,7 +196,6 @@ class Qwen2_5_VisionPatchEmbedFlexi(nn.Module):
             interpolation="bicubic",
             antialias=True,
         )
-        import pdb; pdb.set_trace()
         # hidden_states = self.proj(hidden_states.to(dtype=target_dtype)).view(-1, self.embed_dim)
         hidden_states = F.conv3d(
             hidden_states.to(dtype=target_dtype), resized_weight, bias=self.proj.bias, stride=patch_size
