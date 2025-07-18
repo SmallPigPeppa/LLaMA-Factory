@@ -697,7 +697,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                     else:
                         patchsize = random.choice([7, 14])
                     # window_patchsize_list.append(patchsize)
-                    window_patchsize_list.append(7)
+                    window_patchsize_list.append(14)
 
         return window_patchsize_list, window_grid_thw_list
 
