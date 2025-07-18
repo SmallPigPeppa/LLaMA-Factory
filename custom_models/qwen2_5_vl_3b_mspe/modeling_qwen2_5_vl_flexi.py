@@ -909,8 +909,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
         )
         cu_window_seqlens = torch.unique_consecutive(cu_window_seqlens)
-        # cu_merge = (cu_window_seqlens // self.spatial_merge_unit).cpu().tolist()
-        # window_index_list = [window_index[start:end] for start, end in zip(cu_merge[:-1], cu_merge[1:])]
+        cu_merge = (cu_window_seqlens // self.spatial_merge_unit).cpu().tolist()
+        window_index_list = [window_index[start:end] for start, end in zip(cu_merge[:-1], cu_merge[1:])]
 
         # 2. get window patchsize and itxy coords
         # window_patchsize_list, window_grid_thw_list = self.get_window_patchsize(grid_thw)
@@ -940,20 +940,19 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         # position_embeddings = (emb.cos(), emb.sin())
 
         # 4. compute per window
-        # hidden_states_list = []
+        hidden_states_list = []
         # pos_emb_list = []
         # grid_itxy_list = []
         # window_seqlens_list = []
         # window_imgidx_list = []
         # import pdb;pdb.set_trace()
-        # for i, (window_idx, window_patchsize, window_grid_thw) in enumerate(
-        #         zip(window_index_list, window_patchsize_list, window_grid_thw_list)):
+        for i, window_idx in enumerate(window_index_list):
         #
         #     # window patch_embed
-        #     seq_len, _ = hidden_states.shape
-        #     window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,-1)
-        #     window_hidden_states = window_hidden_states[window_idx, :, :]
-        #     window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
+            seq_len, _ = hidden_states.shape
+            window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,-1)
+            window_hidden_states = window_hidden_states[window_idx, :, :]
+            window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
         #
         #     # # merge to flatten (for repatchify)
         #     # window_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=window_grid_thw.unsqueeze(0), merge_size=self.spatial_merge_size)
@@ -967,7 +966,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         #     # # flatten to merge (for patch embedding)
         #     # update_window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=update_window_grid_thw.unsqueeze(0),merge_size=self.spatial_merge_size)
         #     # window_hidden_states = window_hidden_states[update_window_flatten_to_merge_idx]
-        #     window_patch_embed = self.patch_embed(window_hidden_states)
+            window_patch_embed = self.patch_embed(window_hidden_states)
         #
         #     # window pos_embed
         #     window_grid_itxy = grid_itxy_coords.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
@@ -986,7 +985,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         #     emb = torch.cat(( window_rotary_pos_emb,  window_rotary_pos_emb), dim=-1)
         #     window_pos_emb = (emb.cos(), emb.sin())
         #
-        #     hidden_states_list.append(window_patch_embed)
+            hidden_states_list.append(window_patch_embed)
         #     pos_emb_list.append(window_pos_emb)
         #     window_seqlens_list.append(len(window_grid_itxy))
         #     window_imgidx_list.append(window_grid_itxy[0, 0])
@@ -995,7 +994,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         # import pdb;pdb.set_trace()
 
         # concate hidden_states pos_emb
-        # hidden_states = torch.cat(hidden_states_list, dim=0).contiguous()
+        hidden_states = torch.cat(hidden_states_list, dim=0).contiguous()
         # pos_tensor_1 = torch.cat([x[0] for x in pos_emb_list], dim=0)
         # pos_tensor_2 = torch.cat([x[1] for x in pos_emb_list], dim=0)
         # pos_emb = (pos_tensor_1, pos_tensor_2)
