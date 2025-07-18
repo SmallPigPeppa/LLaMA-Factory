@@ -912,14 +912,14 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         # 2. get window patchsize and itxy coords
         window_patchsize_list, window_grid_thw_list = self.get_window_patchsize(grid_thw)
         grid_itxy_coords = self.compute_grid_itxy(grid_thw)
-        flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=grid_thw, merge_size=2)
+        flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=grid_thw, merge_size=self.spatial_merge_size)
         grid_itxy_coords = grid_itxy_coords[flatten_to_merge_idx]
 
         # 3. get position embed
         tmp_grid_thw = grid_thw.clone()
         tmp_grid_thw[:, 1:] = tmp_grid_thw[:, 1:] * 2
         rotary_pos_emb = self.rot_pos_emb(tmp_grid_thw)
-        tmp_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=tmp_grid_thw, merge_size=2)
+        tmp_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=tmp_grid_thw, merge_size=self.spatial_merge_size)
         rotary_pos_emb = rotary_pos_emb[tmp_merge_to_flatten_idx]  # merge index to flatten
         emb = torch.cat((rotary_pos_emb, rotary_pos_emb), dim=-1)
         position_embeddings = (emb.cos(), emb.sin())
@@ -941,7 +941,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
 
             # merge to flatten (for repatchify)
-            window_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=window_grid_thw.unsqueeze(0), merge_size=2)
+            window_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=window_grid_thw.unsqueeze(0), merge_size=self.spatial_merge_size)
             window_hidden_states = window_hidden_states[window_merge_to_flatten_idx]
             window_hidden_states, update_window_grid_thw = self.repatchify(
                 pixel_value=window_hidden_states,
@@ -950,7 +950,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             )
 
             # flatten to merge (for patch embedding)
-            update_window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=update_window_grid_thw.unsqueeze(0),merge_size=2)
+            update_window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=update_window_grid_thw.unsqueeze(0),merge_size=self.spatial_merge_size)
             window_hidden_states = window_hidden_states[update_window_flatten_to_merge_idx]
             window_patch_embed = self.patch_embed(window_hidden_states, patch_size=window_patchsize)
 
@@ -1023,7 +1023,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         # import pdb;pdb.set_trace()
         hidden_states = hidden_states[sorted_indices]
         token_itxy = grid_itxy[sorted_indices]
-        token_itxy[:, 2:] = (token_itxy[:, 2:] // 2)
+        # update xy from (i, t, x, y)
+        token_itxy[:, 2:] = (token_itxy[:, 2:] // self.spatial_merge_size)
         image_idxs = token_itxy[:, 0]
         unique_imgs = torch.unique(image_idxs)
         image_idxs_list = [(token_itxy[image_idxs == img][:, 1:]) for img in unique_imgs]
