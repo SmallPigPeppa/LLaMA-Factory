@@ -133,7 +133,7 @@ def pi_resize3d(
     out_ch, in_ch, depth, h, w = conv_weight.shape
     h_new, w_new = to_2tuple(target_size)
     device = conv_weight.device
-    weight_dtype=conv_weight.dtype
+    weight_dtype = conv_weight.dtype
     float_dtype = torch.float
     conv_weight.to(dtype=float_dtype)
 
