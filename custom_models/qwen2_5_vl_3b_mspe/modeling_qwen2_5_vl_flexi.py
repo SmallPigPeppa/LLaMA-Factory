@@ -973,6 +973,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         update_seq_len = grid_itxy.shape[0]
         grid_itxy = grid_itxy.reshape(update_seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
         grid_itxy = grid_itxy[:, 0, :]
+        import pdb;
+        pdb.set_trace()
         reverse_indices = self.get_reverse_indices(patch_xy_list)
         hidden_states = hidden_states[reverse_indices, :]
 
