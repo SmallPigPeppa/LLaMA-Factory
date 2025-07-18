@@ -937,8 +937,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                 zip(window_index_list, window_patchsize_list, window_grid_thw_list)):
             # window patch_embed
             seq_len, _ = hidden_states.shape
-            window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,
-                                                         -1)
+            window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,-1)
             window_hidden_states = window_hidden_states[window_idx, :, :]
             window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
 
@@ -953,10 +952,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
             # flatten to merge (for patch embedding)
             update_window_grid_thw = window_grid_thw.clone()
-            update_window_grid_thw[1:] = (update_window_grid_thw[1:] * window_patchsize / self.patch_size).to(
-                dtype=torch.long)
-            update_window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=update_window_grid_thw.unsqueeze(0),
-                                                                           merge_size=2)
+            update_window_grid_thw[1:] = (update_window_grid_thw[1:] * window_patchsize / self.patch_size).to(dtype=torch.long)
+            update_window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=update_window_grid_thw.unsqueeze(0),merge_size=2)
             window_hidden_states = window_hidden_states[update_window_flatten_to_merge_idx]
             window_patch_embed = self.patch_embed(window_hidden_states, patch_size=window_patchsize)
 
