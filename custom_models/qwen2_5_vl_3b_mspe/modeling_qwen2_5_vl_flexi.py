@@ -840,9 +840,10 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
         )
         cu_window_seqlens = torch.unique_consecutive(cu_window_seqlens)
-        num_windows = cu_window_seqlens.numel() - 1
-        window_index_list = [window_index[i * self.spatial_merge_unit: (i + 1) * self.spatial_merge_unit] for i in
-                             range(num_windows)]
+
+        # Divide cu_window_seqlens by 4, convert to list
+        cu = (cu_window_seqlens // self.spatial_merge_unit).cpu().tolist()
+        window_index_list = [window_index[start:end] for start, end in zip(cu[:-1], cu[1:])]
 
         # 2. get window patchsize and itxy coords
         window_patchsize_list, window_grid_thw_list = self.get_window_patchsize(grid_thw)
