@@ -2256,6 +2256,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             cache_position=cache_position,
         )
         # import pdb;pdb.set_trace()
+        print(f'rope_deltas={self.rope_deltas}')
         output = Qwen2_5_VLModelOutputWithPast(
             last_hidden_state=outputs.last_hidden_state,
             past_key_values=outputs.past_key_values,
@@ -2456,6 +2457,7 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
         if not return_dict:
             output = (logits,) + outputs[1:]
             return (loss,) + output if loss is not None else output
+
 
         return Qwen2_5_VLCausalLMOutputWithPast(
             loss=loss,
