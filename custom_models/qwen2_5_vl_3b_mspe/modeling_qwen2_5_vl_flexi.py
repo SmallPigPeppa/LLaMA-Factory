@@ -133,7 +133,7 @@ def pi_resize3d(
     out_ch, in_ch, depth, h, w = conv_weight.shape
     h_new, w_new = to_2tuple(target_size)
     device = conv_weight.device
-    weight_dtype = conv_weight.dtype
+    dtype = conv_weight.dtype
     float_dtype = torch.float
     conv_weight.to(dtype=float_dtype)
 
@@ -166,7 +166,7 @@ def pi_resize3d(
     flat = conv_weight.view(-1, h * w)  # [O*I*D, H*W]
     resized_flat = flat @ pinv.t()  # [O*I*D, H'*W']
     # reshape back to 5D
-    return resized_flat.view(out_ch, in_ch, depth, h_new, w_new).to(dtype=weight_dtype)
+    return resized_flat.view(out_ch, in_ch, depth, h_new, w_new).to(dtype=dtype)
 
 
 class Qwen2_5_VisionPatchEmbedFlexi(nn.Module):
