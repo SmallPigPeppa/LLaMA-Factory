@@ -139,7 +139,7 @@ def pi_resize3d(
 
     # no-op if same spatial size
     if (h, w) == (h_new, w_new):
-        return conv_weight
+        return conv_weight.to(dtype=dtype)
 
     # resize a single 2D slice via F.interpolate
     def _resize2d(x: torch.Tensor) -> torch.Tensor:
