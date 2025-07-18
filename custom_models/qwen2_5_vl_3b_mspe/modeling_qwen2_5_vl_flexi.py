@@ -802,8 +802,10 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
                 for (t_key, x_key, y_key), points in group_coords.items():
                     points_tensor = torch.stack(points)  # shape [n, 2]
-                    mean_xy = points_tensor.mean(dim=0).round().to(grid_ityx.dtype)
-                    new_coords.append([img.item(), t_key, mean_xy[0], mean_xy[1]])
+                    # mean_xy = points_tensor.mean(dim=0).round().to(grid_ityx.dtype)
+                    # new_coords.append([img.item(), t_key, mean_xy[0], mean_xy[1]])
+                    min_xy = points_tensor.min(dim=0).values.to(grid_ityx.dtype)
+                    new_coords.append([img.item(), t_key, min_xy[0], min_xy[1]])
 
             new_grid = torch.tensor(new_coords, device=grid_ityx.device)
 
@@ -1013,6 +1015,13 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         update_seq_len = grid_itxy.shape[0]
         grid_itxy = grid_itxy.reshape(update_seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
         grid_itxy = grid_itxy[:, 0, :]
+
+        # Sort by image_idx, then t, then x, then y
+        np_itxy = grid_itxy.cpu().numpy()
+        sorted_indices = np.lexsort((np_itxy[:, 3], np_itxy[:, 2], np_itxy[:, 1], np_itxy[:, 0]))
+        sorted_indices = torch.from_numpy(sorted_indices).to(hidden_states.device)
+        hidden_states = hidden_states[sorted_indices]
+
         import pdb;pdb.set_trace()
         reverse_indices = self.get_reverse_indices(patch_xy_list)
         hidden_states = hidden_states[reverse_indices, :]
