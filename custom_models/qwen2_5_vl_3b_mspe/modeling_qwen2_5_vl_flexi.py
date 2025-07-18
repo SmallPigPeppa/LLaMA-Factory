@@ -943,18 +943,18 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             window_hidden_states = window_hidden_states[window_idx, :, :]
             window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
 
-            # merge to flatten (for repatchify)
-            window_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=window_grid_thw.unsqueeze(0), merge_size=self.spatial_merge_size)
-            window_hidden_states = window_hidden_states[window_merge_to_flatten_idx]
-            window_hidden_states, update_window_grid_thw = self.repatchify(
-                pixel_value=window_hidden_states,
-                grid_thw=window_grid_thw,
-                new_patch_size=window_patchsize
-            )
-
-            # flatten to merge (for patch embedding)
-            update_window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=update_window_grid_thw.unsqueeze(0),merge_size=self.spatial_merge_size)
-            window_hidden_states = window_hidden_states[update_window_flatten_to_merge_idx]
+            # # merge to flatten (for repatchify)
+            # window_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=window_grid_thw.unsqueeze(0), merge_size=self.spatial_merge_size)
+            # window_hidden_states = window_hidden_states[window_merge_to_flatten_idx]
+            # window_hidden_states, update_window_grid_thw = self.repatchify(
+            #     pixel_value=window_hidden_states,
+            #     grid_thw=window_grid_thw,
+            #     new_patch_size=window_patchsize
+            # )
+            #
+            # # flatten to merge (for patch embedding)
+            # update_window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=update_window_grid_thw.unsqueeze(0),merge_size=self.spatial_merge_size)
+            # window_hidden_states = window_hidden_states[update_window_flatten_to_merge_idx]
             window_patch_embed = self.patch_embed(window_hidden_states, patch_size=window_patchsize)
 
             # window pos_embed
