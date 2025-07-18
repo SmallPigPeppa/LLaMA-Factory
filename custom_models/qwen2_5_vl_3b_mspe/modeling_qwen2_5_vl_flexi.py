@@ -139,7 +139,6 @@ def pi_resize3d(
     conv_weight = conv_weight.to(dtype=float_dtype)
 
     # no-op if same spatial size
-    import pdb; pdb.set_trace()
     if (h, w) == (h_new, w_new):
         return conv_weight.to(dtype=dtype)
 
