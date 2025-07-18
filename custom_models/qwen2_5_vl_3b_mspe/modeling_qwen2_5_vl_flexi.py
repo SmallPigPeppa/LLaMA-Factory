@@ -987,26 +987,36 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         grid_itxy = torch.cat(grid_itxy_list, dim=0)
 
         # update cu_window_seqlens
-        update_cu_window_seqlens = torch.tensor([0] + list(torch.cumsum(torch.tensor(window_seqlens_list), dim=0)))
+        # update_cu_window_seqlens = torch.tensor([0] + list(torch.cumsum(torch.tensor(window_seqlens_list), dim=0)))
+        #
+        # # update cu_seqlens
+        # num_images = max(window_imgidx_list) + 1
+        # update_cu_seqlens = torch.zeros(num_images + 1, dtype=torch.long, device=update_cu_window_seqlens.device)
+        # window_imgidx_tensor = torch.tensor(window_imgidx_list, dtype=torch.long,
+        #                                     device=update_cu_window_seqlens.device)
+        # update_cu_seqlens.scatter_reduce_(
+        #     0,
+        #     window_imgidx_tensor + 1,
+        #     update_cu_window_seqlens[1:] - update_cu_window_seqlens[:-1],
+        #     reduce='sum'
+        # )
+        # update_cu_seqlens = update_cu_seqlens.cumsum(dim=0)
 
-        # update cu_seqlens
-        num_images = max(window_imgidx_list) + 1
-        update_cu_seqlens = torch.zeros(num_images + 1, dtype=torch.long, device=update_cu_window_seqlens.device)
-        window_imgidx_tensor = torch.tensor(window_imgidx_list, dtype=torch.long,
-                                            device=update_cu_window_seqlens.device)
-        update_cu_seqlens.scatter_reduce_(
-            0,
-            window_imgidx_tensor + 1,
-            update_cu_window_seqlens[1:] - update_cu_window_seqlens[:-1],
-            reduce='sum'
+        cu_seqlens = torch.repeat_interleave(grid_thw[:, 1] * grid_thw[:, 2], grid_thw[:, 0]).cumsum(
+            dim=0,
+            # Select dtype based on the following factors:
+            #  - FA2 requires that cu_seqlens_q must have dtype int32
+            #  - torch.onnx.export requires that cu_seqlens_q must have same dtype as grid_thw
+            # See https://github.com/huggingface/transformers/pull/34852 for more information
+            dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
         )
-        update_cu_seqlens = update_cu_seqlens.cumsum(dim=0)
+        cu_seqlens = F.pad(cu_seqlens, (1, 0), value=0)
 
         for layer_num, blk in enumerate(self.blocks):
             if layer_num in self.fullatt_block_indexes:
-                cu_seqlens_now = update_cu_seqlens
+                cu_seqlens_now = cu_seqlens
             else:
-                cu_seqlens_now = update_cu_window_seqlens
+                cu_seqlens_now = cu_window_seqlens
             if self.gradient_checkpointing and self.training:
                 hidden_states = self._gradient_checkpointing_func(
                     blk.__call__, hidden_states, cu_seqlens_now, None, pos_emb
