@@ -2178,15 +2178,15 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             if pixel_values is not None:
                 # import pdb;pdb.set_trace()
                 image_embeds, grid_txy_list = self.get_image_features(pixel_values, image_grid_thw)
-                position_ids = update_position_ids(position_ids=position_ids,grid_txy_list=grid_txy_list,ids=input_ids,img_id=self.config.image_token_id)
-                inputs_embeds, input_ids, attention_mask, labels = update_input_embeds_ids_masks_labels(
-                    embeds=inputs_embeds,
-                    ids=input_ids,
-                    att_masks=attention_mask,
-                    labels=labels,
-                    img_id=self.config.image_token_id,
-                    num_image_token=[len(i) for i in grid_txy_list]
-                )
+                # position_ids = update_position_ids(position_ids=position_ids,grid_txy_list=grid_txy_list,ids=input_ids,img_id=self.config.image_token_id)
+                # inputs_embeds, input_ids, attention_mask, labels = update_input_embeds_ids_masks_labels(
+                #     embeds=inputs_embeds,
+                #     ids=input_ids,
+                #     att_masks=attention_mask,
+                #     labels=labels,
+                #     img_id=self.config.image_token_id,
+                #     num_image_token=[len(i) for i in grid_txy_list]
+                # )
                 # inputs_embeds = self.get_input_embeddings()(input_ids)
                 # other params: past_key_values, use_cache, cache_position is None
                 if any(x is not None for x in [past_key_values, use_cache, cache_position]):
@@ -2465,10 +2465,10 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
 
         loss = None
         # import pdb;pdb.set_trace()
-        update_labels = outputs[-1]
+        # update_labels = outputs[-1]
         if labels is not None:
-            # loss = self.loss_function(logits=logits, labels=labels, vocab_size=self.config.vocab_size)
-            loss = self.loss_function(logits=logits, labels=update_labels, vocab_size=self.config.vocab_size)
+            loss = self.loss_function(logits=logits, labels=labels, vocab_size=self.config.vocab_size)
+            # loss = self.loss_function(logits=logits, labels=update_labels, vocab_size=self.config.vocab_size)
 
         if not return_dict:
             output = (logits,) + outputs[1:]
