@@ -890,7 +890,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         return torch.cat(batch_indices, dim=0)
 
-    def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> Tuple[torch.Tensor, List]:
+    def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> torch.Tensor:
         """
         Args:
             hidden_states (`torch.Tensor` of shape `(seq_len, hidden_size)`):
@@ -1029,25 +1029,25 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         hidden_states = self.merger(hidden_states)
         # reverse_indices = torch.argsort(window_index)
-        update_seq_len = grid_itxy.shape[0]
-        grid_itxy = grid_itxy.reshape(update_seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
-        grid_itxy = grid_itxy[:, 0, :]
+        # update_seq_len = grid_itxy.shape[0]
+        # grid_itxy = grid_itxy.reshape(update_seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
+        # grid_itxy = grid_itxy[:, 0, :]
+        #
+        # # Sort by image_idx, then t, then x, then y
+        # # np_itxy = grid_itxy.cpu().numpy()
+        # # sorted_indices = np.lexsort((np_itxy[:, 3], np_itxy[:, 2], np_itxy[:, 1], np_itxy[:, 0]))
+        # # sorted_indices = torch.from_numpy(sorted_indices).to(hidden_states.device)
+        # # import pdb;pdb.set_trace()
+        # # hidden_states = hidden_states[sorted_indices]
+        # # token_itxy = grid_itxy[sorted_indices]
+        # token_itxy = grid_itxy
+        # # update xy from (i, t, x, y)
+        # token_itxy[:, 2:] = (token_itxy[:, 2:] // self.spatial_merge_size)
+        # image_idxs = token_itxy[:, 0]
+        # unique_imgs = torch.unique(image_idxs)
+        # image_idxs_list = [(token_itxy[image_idxs == img][:, 1:]) for img in unique_imgs]
 
-        # Sort by image_idx, then t, then x, then y
-        # np_itxy = grid_itxy.cpu().numpy()
-        # sorted_indices = np.lexsort((np_itxy[:, 3], np_itxy[:, 2], np_itxy[:, 1], np_itxy[:, 0]))
-        # sorted_indices = torch.from_numpy(sorted_indices).to(hidden_states.device)
-        # import pdb;pdb.set_trace()
-        # hidden_states = hidden_states[sorted_indices]
-        # token_itxy = grid_itxy[sorted_indices]
-        token_itxy = grid_itxy
-        # update xy from (i, t, x, y)
-        token_itxy[:, 2:] = (token_itxy[:, 2:] // self.spatial_merge_size)
-        image_idxs = token_itxy[:, 0]
-        unique_imgs = torch.unique(image_idxs)
-        image_idxs_list = [(token_itxy[image_idxs == img][:, 1:]) for img in unique_imgs]
-
-        return hidden_states, image_idxs_list
+        return hidden_states
 
 
 @dataclass
@@ -2177,7 +2177,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             inputs_embeds = self.get_input_embeddings()(input_ids)
             if pixel_values is not None:
                 # import pdb;pdb.set_trace()
-                image_embeds, grid_txy_list = self.get_image_features(pixel_values, image_grid_thw)
+                image_embeds = self.get_image_features(pixel_values, image_grid_thw)
                 # position_ids = update_position_ids(position_ids=position_ids,grid_txy_list=grid_txy_list,ids=input_ids,img_id=self.config.image_token_id)
                 # inputs_embeds, input_ids, attention_mask, labels = update_input_embeds_ids_masks_labels(
                 #     embeds=inputs_embeds,
