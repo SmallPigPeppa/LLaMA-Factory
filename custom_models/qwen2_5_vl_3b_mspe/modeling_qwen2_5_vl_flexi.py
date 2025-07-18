@@ -135,7 +135,7 @@ def pi_resize3d(
     device = conv_weight.device
     dtype = conv_weight.dtype
     float_dtype = torch.float
-    conv_weight.to(dtype=float_dtype)
+    conv_weight = conv_weight.to(dtype=float_dtype)
 
     # no-op if same spatial size
     if (h, w) == (h_new, w_new):
