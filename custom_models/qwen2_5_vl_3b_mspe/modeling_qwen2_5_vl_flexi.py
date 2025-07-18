@@ -2160,7 +2160,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
         if inputs_embeds is None:
             inputs_embeds = self.get_input_embeddings()(input_ids)
             if pixel_values is not None:
-                import pdb;pdb.set_trace()
+                # import pdb;pdb.set_trace()
                 image_embeds, grid_txy_list = self.get_image_features(pixel_values, image_grid_thw)
                 position_ids = update_position_ids(position_ids=position_ids,grid_txy_list=grid_txy_list,ids=input_ids,img_id=self.config.image_token_id)
                 inputs_embeds, input_ids, attention_mask, labels = update_input_embeds_ids_masks_labels(
@@ -2211,7 +2211,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
 
             if attention_mask is not None:
                 attention_mask = attention_mask.to(inputs_embeds.device)
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         # if we get 4D attention mask we cannot calculate rope deltas anymore. TODO @raushan fixme
         if position_ids is None and (attention_mask is None or attention_mask.ndim == 2):
             # calculate RoPE index once per generation in the pre-fill stage only
@@ -2255,7 +2255,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             return_dict=True,
             cache_position=cache_position,
         )
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         output = Qwen2_5_VLModelOutputWithPast(
             last_hidden_state=outputs.last_hidden_state,
             past_key_values=outputs.past_key_values,
@@ -2447,7 +2447,7 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
         logits = self.lm_head(hidden_states)
 
         loss = None
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         update_labels=outputs[-1]
         if labels is not None:
             loss = self.loss_function(logits=logits, labels=labels, vocab_size=self.config.vocab_size)
