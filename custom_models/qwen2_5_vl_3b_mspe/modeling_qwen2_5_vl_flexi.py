@@ -904,7 +904,6 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                 grid_thw=window_grid_thw,
                 new_patch_size=window_patchsize
             )
-            import pdb;pdb.set_trace()
             window_patch_embed = self.patch_embed(window_hidden_states, patch_size=window_patchsize)
 
             # window pos_embed
@@ -916,7 +915,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                 new_patchsize=window_patchsize
             )
             flatten_index = self.itxy_to_flatten_index(grid_thw=tmp_grid_thw, grid_itxy=window_grid_itxy)
-            window_pos_emb = position_embeddings[flatten_index]
+            window_pos_emb = (position_embeddings[0][flatten_index], position_embeddings[1][flatten_index])
 
             hidden_states_list.append(window_patch_embed)
             pos_emb_list.append(window_pos_emb)
