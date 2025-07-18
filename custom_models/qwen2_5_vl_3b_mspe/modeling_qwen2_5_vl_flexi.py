@@ -590,7 +590,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         Returns:
             `torch.Tensor`: hidden_states.
         """
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
         hidden_states = self.patch_embed(hidden_states)
         rotary_pos_emb = self.rot_pos_emb(grid_thw)
         window_index, cu_window_seqlens = self.get_window_index(grid_thw)
@@ -822,6 +823,34 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         offset = torch.cumsum(torch.cat([patch_per_image.new_zeros(1), patch_per_image[:-1]]), dim=0)
         return offset[image_idx] + t * H * W + x * W + y
 
+    def flatten_to_merge_idx(self, grid_thw: torch.Tensor, merge_size: int) -> torch.Tensor:
+        """
+        Convert a batch of grid_thw into continuous merged indices.
+
+        Args:
+            grid_thw (torch.Tensor): Shape (batch_size, 3), each row is [t, h, w].
+            merge_size (int): The size of the merge block.
+
+        Returns:
+            torch.Tensor: Flattened indices for the entire batch, continuous.
+        """
+        batch_size = grid_thw.size(0)
+        batch_indices = []
+        offset = 0
+
+        for i in range(batch_size):
+            t, h, w = grid_thw[i].tolist()
+            idx = torch.arange(t * h * w, dtype=torch.long).reshape(t, h, w)
+            # Reshape into blocks and rearrange axes for merged blocks
+            idx = idx.reshape(t, h // merge_size, merge_size, w // merge_size, merge_size)
+            idx = idx.permute(0, 1, 3, 2, 4).contiguous()
+            idx = idx.flatten() + offset
+
+            batch_indices.append(idx)
+            offset += t * h * w
+
+        return torch.cat(batch_indices, dim=0)
+
     def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
@@ -847,6 +876,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         # 2. get window patchsize and itxy coords
         window_patchsize_list, window_grid_thw_list = self.get_window_patchsize(grid_thw)
         grid_itxy_coords = self.compute_grid_itxy(grid_thw)
+        flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=grid_thw, merge_size=2)
+        grid_itxy_coords = grid_itxy_coords[flatten_to_merge_idx]
 
         # 3. get position embed
         tmp_grid_thw = grid_thw.clone()
@@ -2096,7 +2127,8 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
 
             if attention_mask is not None:
                 attention_mask = attention_mask.to(inputs_embeds.device)
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
         # if we get 4D attention mask we cannot calculate rope deltas anymore. TODO @raushan fixme
         if position_ids is None and (attention_mask is None or attention_mask.ndim == 2):
             # calculate RoPE index once per generation in the pre-fill stage only
