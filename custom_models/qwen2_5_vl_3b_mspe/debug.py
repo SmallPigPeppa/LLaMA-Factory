@@ -124,7 +124,7 @@ def forward_mspe(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> T
             grid_txy=window_grid_itxy,
             new_patchsize=window_patchsize
         )
-        flatten_index = self.itxy_to_flatten_index(grid_thw=tmp_grid_thw, grid_itxy=window_grid_itxy)
+        flatten_index = self.itxy_to_pos_index(grid_thw=tmp_grid_thw, grid_itxy=window_grid_itxy)
         window_pos_emb = position_embeddings[flatten_index]
 
         hidden_states_list.append(window_patch_embed)

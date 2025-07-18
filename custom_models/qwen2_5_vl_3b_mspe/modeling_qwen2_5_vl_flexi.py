@@ -31,6 +31,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from jsonargparse_tests.test_subclasses import dtype
 
 from transformers.activations import ACT2FN
 from transformers.cache_utils import Cache, DynamicCache, SlidingWindowCache, StaticCache
@@ -817,7 +818,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         return new_grid
 
-    def itxy_to_flatten_index(self, grid_thw: torch.Tensor, grid_itxy: torch.Tensor) -> torch.Tensor:
+    def itxy_to_pos_index(self, grid_thw: torch.Tensor, grid_itxy: torch.Tensor) -> torch.Tensor:
         image_idx, t, x, y = grid_itxy.unbind(dim=1)
         H, W = grid_thw[image_idx, 1], grid_thw[image_idx, 2]
         patch_per_image = grid_thw.prod(dim=1)
@@ -849,6 +850,41 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
             batch_indices.append(idx)
             offset += t * h * w
+
+        return torch.cat(batch_indices, dim=0)
+
+    def merge_to_flatten_idx(self, grid_thw: torch.Tensor, merge_size: int) -> torch.Tensor:
+        """
+        Inverse of flatten_to_merge_idx_batch.
+        Converts merged indices back into original flattened indices.
+
+        Args:
+            grid_thw (torch.Tensor): Shape (batch_size, 3), each row is [t, h, w].
+            merge_size (int): The size of the merge block.
+
+        Returns:
+            torch.Tensor: Flattened indices in original t*h*w order across the batch.
+        """
+        batch_size = grid_thw.size(0)
+        batch_indices = []
+        offset = 0
+
+        for i in range(batch_size):
+            t, h, w = grid_thw[i].tolist()
+            numel = t * h * w
+
+            # Create the same index grid and perform the same merge permutation
+            idx = torch.arange(numel, dtype=torch.long).reshape(t, h, w)
+            idx_merged = idx.reshape(t, h // merge_size, merge_size, w // merge_size, merge_size)
+            idx_merged = idx_merged.permute(0, 1, 3, 2, 4).contiguous().flatten()
+
+            # Now invert the permutation:
+            inverse_idx = torch.empty_like(idx_merged)
+            inverse_idx[idx_merged] = torch.arange(numel, dtype=torch.long)
+
+            inverse_idx = inverse_idx + offset
+            batch_indices.append(inverse_idx)
+            offset += numel
 
         return torch.cat(batch_indices, dim=0)
 
@@ -884,6 +920,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         tmp_grid_thw = grid_thw.clone()
         tmp_grid_thw[:, 1:] = tmp_grid_thw[:, 1:] * 2
         rotary_pos_emb = self.rot_pos_emb(tmp_grid_thw)
+        tmp_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=tmp_grid_thw, merge_size=2)
+        rotary_pos_emb = rotary_pos_emb[tmp_merge_to_flatten_idx] # merge index to flatten
         emb = torch.cat((rotary_pos_emb, rotary_pos_emb), dim=-1)
         position_embeddings = (emb.cos(), emb.sin())
 
@@ -903,11 +941,23 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                                                          -1)
             window_hidden_states = window_hidden_states[window_idx, :, :]
             window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
+
+            # merge to flatten (for repatchify)
+            window_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=window_grid_thw.unsqueeze(0), merge_size=2)
+            window_hidden_states = window_hidden_states[window_merge_to_flatten_idx]
             window_hidden_states, window_grid_thw = self.repatchify(
                 pixel_value=window_hidden_states,
                 grid_thw=window_grid_thw,
                 new_patch_size=window_patchsize
             )
+
+            # flatten to merge (for patch embedding)
+            update_window_grid_thw = window_grid_thw.clone()
+            update_window_grid_thw[1:] = (update_window_grid_thw[1:] * window_patchsize / self.patch_size).to(
+                dtype=torch.long)
+            update_window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=update_window_grid_thw.unsqueeze(0),
+                                                                           merge_size=2)
+            window_hidden_states = window_hidden_states[update_window_flatten_to_merge_idx]
             window_patch_embed = self.patch_embed(window_hidden_states, patch_size=window_patchsize)
 
             # window pos_embed
@@ -918,11 +968,10 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                 grid_ityx=window_grid_itxy,
                 new_patchsize=window_patchsize
             )
-            window_flatten_to_merge_idx = self.flatten_to_merge_idx(grid_thw=window_grid_thw, merge_size=2)
-            window_grid_itxy = window_grid_itxy[window_flatten_to_merge_idx]
+            window_grid_itxy = window_grid_itxy[update_window_flatten_to_merge_idx]  # flatten to merge
 
-            flatten_index = self.itxy_to_flatten_index(grid_thw=tmp_grid_thw, grid_itxy=window_grid_itxy)
-            window_pos_emb = (position_embeddings[0][flatten_index], position_embeddings[1][flatten_index])
+            pos_index = self.itxy_to_pos_index(grid_thw=tmp_grid_thw, grid_itxy=window_grid_itxy)
+            window_pos_emb = (position_embeddings[0][pos_index], position_embeddings[1][pos_index])
 
             hidden_states_list.append(window_patch_embed)
             pos_emb_list.append(window_pos_emb)
