@@ -908,8 +908,13 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
         )
         cu_window_seqlens = torch.unique_consecutive(cu_window_seqlens)
-        cu_merge = (cu_window_seqlens // self.spatial_merge_unit).cpu().tolist()
-        window_index_list = [window_index[start:end] for start, end in zip(cu_merge[:-1], cu_merge[1:])]
+        import pdb;pdb.set_trace()
+        # cu_merge = (cu_window_seqlens // self.spatial_merge_unit).cpu().tolist()
+        # window_index_list = [window_index[start:end] for start, end in zip(cu_merge[:-1], cu_merge[1:])]
+        cu_merge = cu_window_seqlens // self.spatial_merge_unit
+        start_indices = cu_merge[:-1]
+        end_indices = cu_merge[1:]
+        window_index_list = [window_index[start.item():end.item()] for start, end in zip(start_indices, end_indices)]
 
         rotary_pos_emb = self.rot_pos_emb(grid_thw)
 
