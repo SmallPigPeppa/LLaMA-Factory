@@ -915,10 +915,10 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
 
         seq_len, _ = hidden_states.size()
-        hidden_states = self.patch_embed(hidden_states)
-        hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
-        hidden_states = hidden_states[window_index, :, :]
-        hidden_states = hidden_states.reshape(seq_len, -1)
+        # hidden_states = self.patch_embed(hidden_states)
+        # hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
+        # hidden_states = hidden_states[window_index, :, :]
+        # hidden_states = hidden_states.reshape(seq_len, -1)
         rotary_pos_emb = rotary_pos_emb.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
         rotary_pos_emb = rotary_pos_emb[window_index, :, :]
         rotary_pos_emb = rotary_pos_emb.reshape(seq_len, -1)
@@ -927,16 +927,16 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
 
         # 4. compute per window
-        # hidden_states_list = []
-        # for i, window_idx in enumerate(window_index_list):
-        #     seq_len, _ = hidden_states.shape
-        #     window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,-1)
-        #     window_hidden_states = window_hidden_states[window_idx, :, :]
-        #     window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
-        #     window_patch_embed = self.patch_embed(window_hidden_states)
-        #     hidden_states_list.append(window_patch_embed)
-        #
-        # hidden_states = torch.cat(hidden_states_list, dim=0).contiguous()
+        hidden_states_list = []
+        for i, window_idx in enumerate(window_index_list):
+            seq_len, _ = hidden_states.shape
+            window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,-1)
+            window_hidden_states = window_hidden_states[window_idx, :, :]
+            window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
+            window_patch_embed = self.patch_embed(window_hidden_states)
+            hidden_states_list.append(window_patch_embed)
+
+        hidden_states = torch.cat(hidden_states_list, dim=0).contiguous()
 
         cu_seqlens = torch.repeat_interleave(grid_thw[:, 1] * grid_thw[:, 2], grid_thw[:, 0]).cumsum(
             dim=0,
