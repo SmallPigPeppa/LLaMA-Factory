@@ -141,10 +141,24 @@ def update_position_ids(position_ids, grid_txy_list, ids, img_id):
         out_list.append(merged)
         max_len_new = max(max_len_new, merged.shape[1])
 
-    # 7. 补pad（统一到 batch 内最大长度）
-    final_out = torch.ones((3, batch_size, max_len_new), dtype=position_ids.dtype, device=position_ids.device)
-    for b, out in enumerate(out_list):
-        cur_len = out.shape[1]
-        final_out[:, b, :cur_len] = out
+    # # 7. 补pad（统一到 batch 内最大长度）
+    # final_out = torch.ones((3, batch_size, max_len_new), dtype=position_ids.dtype, device=position_ids.device)
+    # for b, out in enumerate(out_list):
+    #     cur_len = out.shape[1]
+    #     final_out[:, b, :cur_len] = out
 
-    return torch.cat(out_list, dim=1)  # [3, batch, max_len]
+    # 7. 补pad（统一到 batch 内最大长度），每行repeat last col
+    padded_pos = []
+    for out in out_list:  # out: [3, cur_len]
+        cur_len = out.shape[1]
+        if cur_len < max_len_new:
+            pad = max_len_new - cur_len
+            # repeat last col
+            last_col = out[:, -1:].expand(3, pad)  # [3, pad]
+            out = torch.cat([out, last_col], dim=1)  # [3, max_len_new]
+        padded_pos.append(out)
+
+    final_out = torch.stack(padded_pos, dim=1)  # [3, batch, max_len_new]
+    return final_out
+
+    # return torch.cat(out_list, dim=1)  # [3, batch, max_len]
