@@ -590,8 +590,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         Returns:
             `torch.Tensor`: hidden_states.
         """
-        import pdb;
-        pdb.set_trace()
+        import pdb;pdb.set_trace()
         hidden_states = self.patch_embed(hidden_states)
         rotary_pos_emb = self.rot_pos_emb(grid_thw)
         window_index, cu_window_seqlens = self.get_window_index(grid_thw)
@@ -2127,8 +2126,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
 
             if attention_mask is not None:
                 attention_mask = attention_mask.to(inputs_embeds.device)
-        import pdb;
-        pdb.set_trace()
+        import pdb;pdb.set_trace()
         # if we get 4D attention mask we cannot calculate rope deltas anymore. TODO @raushan fixme
         if position_ids is None and (attention_mask is None or attention_mask.ndim == 2):
             # calculate RoPE index once per generation in the pre-fill stage only
