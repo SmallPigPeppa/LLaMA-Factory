@@ -114,7 +114,8 @@ def forward_mspe(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> T
             grid_thw=window_grid_thw,
             new_patch_size=window_patchsize
         )
-        window_patch_embed = self.patch_embed(window_hidden_states, patch_size=window_patchsize)
+        # window_patch_embed = self.patch_embed(window_hidden_states, patch_size=window_patchsize)
+        window_patch_embed = self.patch_embed(window_hidden_states)
 
         # window pos_embed
         window_grid_itxy = grid_itxy_coords.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
