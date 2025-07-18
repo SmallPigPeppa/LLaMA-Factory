@@ -167,6 +167,8 @@ def forward_mspe(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> T
 
     hidden_states = self.merger(hidden_states)
     # reverse_indices = torch.argsort(window_index)
+    grid_itxy_list = grid_itxy_list.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
+    grid_itxy_list= grid_itxy_list[:,0,:]
     reverse_indices = self.get_reverse_indices(patch_xy_list)
     hidden_states = hidden_states[reverse_indices, :]
 
