@@ -93,7 +93,6 @@ class Qwen2_5_VisionPatchEmbed(nn.Module):
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         target_dtype = self.proj.weight.dtype
-        # import pdb;pdb.set_trace()
         hidden_states = hidden_states.view(
             -1, self.in_channels, self.temporal_patch_size, self.patch_size, self.patch_size
         )
@@ -591,7 +590,6 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         Returns:
             `torch.Tensor`: hidden_states.
         """
-        import pdb;pdb.set_trace()
         hidden_states = self.patch_embed(hidden_states)
         rotary_pos_emb = self.rot_pos_emb(grid_thw)
         window_index, cu_window_seqlens = self.get_window_index(grid_thw)
@@ -2144,7 +2142,6 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
         if inputs_embeds is None:
             inputs_embeds = self.get_input_embeddings()(input_ids)
             if pixel_values is not None:
-                # import pdb;pdb.set_trace()
                 image_embeds = self.get_image_features(pixel_values, image_grid_thw)
                 n_image_tokens = (input_ids == self.config.image_token_id).sum().item()
                 n_image_features = image_embeds.shape[0]
