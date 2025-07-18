@@ -921,11 +921,11 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         # 3. get position embed
         tmp_grid_thw = grid_thw.clone()
         tmp_grid_thw[:, 1:] = tmp_grid_thw[:, 1:] * 2
-        rotary_pos_emb = self.rot_pos_emb(tmp_grid_thw)
-        tmp_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=tmp_grid_thw, merge_size=self.spatial_merge_size)
-        rotary_pos_emb = rotary_pos_emb[tmp_merge_to_flatten_idx]  # merge index to flatten
-        emb = torch.cat((rotary_pos_emb, rotary_pos_emb), dim=-1)
-        position_embeddings = (emb.cos(), emb.sin())
+        rotary_pos_emb = self.rot_pos_emb(grid_thw)
+        # tmp_merge_to_flatten_idx = self.merge_to_flatten_idx(grid_thw=tmp_grid_thw, merge_size=self.spatial_merge_size)
+        # rotary_pos_emb = rotary_pos_emb[tmp_merge_to_flatten_idx]  # merge index to flatten
+        # emb = torch.cat((rotary_pos_emb, rotary_pos_emb), dim=-1)
+        # position_embeddings = (emb.cos(), emb.sin())
 
         # 4. compute per window
         hidden_states_list = []
@@ -961,14 +961,18 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             window_grid_itxy = grid_itxy_coords.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
             window_grid_itxy = window_grid_itxy[window_idx, :, :]
             window_grid_itxy = window_grid_itxy.reshape(len(window_idx) * self.spatial_merge_unit, -1)
-            window_grid_itxy = self.recompute_grid_ityx(
-                grid_ityx=window_grid_itxy,
-                new_patchsize=window_patchsize
-            )
-            window_grid_itxy = window_grid_itxy  # flatten to merge
-
-            pos_index = self.itxy_to_pos_index(grid_thw=tmp_grid_thw, grid_itxy=window_grid_itxy)
-            window_pos_emb = (position_embeddings[0][pos_index], position_embeddings[1][pos_index])
+            # window_grid_itxy = self.recompute_grid_ityx(
+            #     grid_ityx=window_grid_itxy,
+            #     new_patchsize=window_patchsize
+            # )
+            # window_grid_itxy = window_grid_itxy  # flatten to merge
+            #
+            # pos_index = self.itxy_to_pos_index(grid_thw=tmp_grid_thw, grid_itxy=window_grid_itxy)
+            window_rotary_pos_emb = rotary_pos_emb.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
+            window_rotary_pos_emb = window_rotary_pos_emb[window_idx, :, :]
+            window_rotary_pos_emb = window_rotary_pos_emb.reshape(len(window_idx) * self.spatial_merge_unit, -1)
+            emb = torch.cat(( window_rotary_pos_emb,  window_rotary_pos_emb), dim=-1)
+            window_pos_emb = (emb.cos(), emb.sin())
 
             hidden_states_list.append(window_patch_embed)
             pos_emb_list.append(window_pos_emb)
