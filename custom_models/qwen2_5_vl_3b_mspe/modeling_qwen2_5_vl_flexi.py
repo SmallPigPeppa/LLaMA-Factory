@@ -133,6 +133,7 @@ def pi_resize3d(
     out_ch, in_ch, depth, h, w = conv_weight.shape
     h_new, w_new = to_2tuple(target_size)
     device = conv_weight.device
+    dtype = conv_weight.dtype
 
     # no-op if same spatial size
     if (h, w) == (h_new, w_new):
@@ -151,7 +152,7 @@ def pi_resize3d(
     def _make_pinv(old: Tuple[int, int], new: Tuple[int, int]) -> torch.Tensor:
         mats = []
         for i in range(old[0] * old[1]):
-            basis = torch.zeros(old, device=device)
+            basis = torch.zeros(old, device=device, dtype=dtype)
             basis.view(-1)[i] = 1.0
             mats.append(_resize2d(basis).view(-1))
         M = torch.stack(mats, dim=0)  # [H*W, H'*W']
@@ -820,7 +821,6 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         offset = torch.cumsum(torch.cat([patch_per_image.new_zeros(1), patch_per_image[:-1]]), dim=0)
         return offset[image_idx] + t * H * W + x * W + y
 
-
     def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
@@ -860,12 +860,14 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         grid_itxy_list = []
         window_seqlens_list = []
         window_imgidx_list = []
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
         for i, (window_idx, window_patchsize, window_grid_thw) in enumerate(
                 zip(window_index_list, window_patchsize_list, window_grid_thw_list)):
             # window patch_embed
             seq_len, _ = hidden_states.shape
-            window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,-1)
+            window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,
+                                                         -1)
             window_hidden_states = window_hidden_states[window_idx, :, :]
             window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
             window_hidden_states, window_grid_thw = self.repatchify(
@@ -892,7 +894,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             window_imgidx_list.append(window_grid_itxy[0, 0])
             grid_itxy_list.append(window_grid_itxy)
 
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
 
         # update cu_window_seqlens
         update_cu_window_seqlens = torch.tensor([0] + list(torch.cumsum(torch.tensor(window_seqlens_list), dim=0)))
