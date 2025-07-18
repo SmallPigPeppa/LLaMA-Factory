@@ -887,7 +887,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         return torch.cat(batch_indices, dim=0)
 
-    def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> Tuple[torch.Tensor, List]:
         """
         Args:
             hidden_states (`torch.Tensor` of shape `(seq_len, hidden_size)`):
@@ -930,7 +930,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         grid_itxy_list = []
         window_seqlens_list = []
         window_imgidx_list = []
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         for i, (window_idx, window_patchsize, window_grid_thw) in enumerate(
                 zip(window_index_list, window_patchsize_list, window_grid_thw_list)):
 
@@ -973,7 +973,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             window_imgidx_list.append(window_grid_itxy[0, 0])
             grid_itxy_list.append(window_grid_itxy)
 
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
 
         # concate hidden_states pos_emb
         hidden_states = torch.cat(hidden_states_list, dim=0)
@@ -1020,12 +1020,15 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         np_itxy = grid_itxy.cpu().numpy()
         sorted_indices = np.lexsort((np_itxy[:, 3], np_itxy[:, 2], np_itxy[:, 1], np_itxy[:, 0]))
         sorted_indices = torch.from_numpy(sorted_indices).to(hidden_states.device)
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         hidden_states = hidden_states[sorted_indices]
-        reverse_indices = self.get_reverse_indices(patch_xy_list)
-        hidden_states = hidden_states[reverse_indices, :]
+        token_itxy = grid_itxy[sorted_indices]
+        token_itxy[:, 2:] = (token_itxy[:, 2:] // 2)
+        image_idxs = token_itxy[:, 0]
+        unique_imgs = torch.unique(image_idxs)
+        image_idxs_list = [(token_itxy[image_idxs == img][:, 1:]) for img in unique_imgs]
 
-        return hidden_states, grid_itxy_list
+        return hidden_states, image_idxs_list
 
 
 @dataclass
@@ -2150,7 +2153,8 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
         if inputs_embeds is None:
             inputs_embeds = self.get_input_embeddings()(input_ids)
             if pixel_values is not None:
-                image_embeds = self.get_image_features(pixel_values, image_grid_thw)
+                image_embeds,grid_txy_list = self.get_image_features(pixel_values, image_grid_thw)
+                import pdb;pdb.set_trace()
                 n_image_tokens = (input_ids == self.config.image_token_id).sum().item()
                 n_image_features = image_embeds.shape[0]
                 if n_image_tokens != n_image_features:
