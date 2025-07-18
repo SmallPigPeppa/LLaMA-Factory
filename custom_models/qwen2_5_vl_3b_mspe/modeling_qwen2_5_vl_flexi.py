@@ -588,8 +588,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         Returns:
             `torch.Tensor`: hidden_states.
         """
-        import pdb;
-        pdb.set_trace()
+        import pdb;pdb.set_trace()
         hidden_states = self.patch_embed(hidden_states)
         rotary_pos_emb = self.rot_pos_emb(grid_thw)
         window_index, cu_window_seqlens = self.get_window_index(grid_thw)
@@ -860,8 +859,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         grid_itxy_list = []
         window_seqlens_list = []
         window_imgidx_list = []
-        import pdb;
-        pdb.set_trace()
+        import pdb;pdb.set_trace()
         for i, (window_idx, window_patchsize, window_grid_thw) in enumerate(
                 zip(window_index_list, window_patchsize_list, window_grid_thw_list)):
             # window patch_embed
@@ -894,8 +892,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             window_imgidx_list.append(window_grid_itxy[0, 0])
             grid_itxy_list.append(window_grid_itxy)
 
-        import pdb;
-        pdb.set_trace()
+        import pdb;pdb.set_trace()
 
         # update cu_window_seqlens
         update_cu_window_seqlens = torch.tensor([0] + list(torch.cumsum(torch.tensor(window_seqlens_list), dim=0)))
