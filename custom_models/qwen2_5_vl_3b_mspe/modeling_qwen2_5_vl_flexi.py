@@ -949,7 +949,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         for i, window_idx in enumerate(window_index_list):
         #
         #     # window patch_embed
-            seq_len, _ = hidden_states.size()
+            seq_len, _ = hidden_states.shape
             window_hidden_states = hidden_states.reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,-1)
             window_hidden_states = window_hidden_states[window_idx, :, :]
             window_hidden_states = window_hidden_states.reshape(len(window_idx) * self.spatial_merge_unit, -1)
