@@ -1068,6 +1068,7 @@ class Qwen2_5_VLModelOutputWithPast(ModelOutput):
     hidden_states: Optional[Tuple[torch.FloatTensor]] = None
     attentions: Optional[Tuple[torch.FloatTensor]] = None
     rope_deltas: Optional[torch.LongTensor] = None
+    labels: Optional[torch.LongTensor] = None,
 
 
 class Qwen2_5_VLRotaryEmbedding(nn.Module):
@@ -2133,6 +2134,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             rope_deltas: Optional[torch.LongTensor] = None,
             cache_position: Optional[torch.LongTensor] = None,
             second_per_grid_ts: Optional[torch.Tensor] = None,
+            labels: Optional[torch.LongTensor] = None,
     ) -> Union[Tuple, Qwen2_5_VLModelOutputWithPast]:
         r"""
         pixel_values_videos (`torch.FloatTensor` of shape `(seq_length, num_channels * temporal_size * image_size * image_size)):
@@ -2165,7 +2167,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
                     embeds=inputs_embeds,
                     ids=input_ids,
                     att_masks=attention_mask,
-                    labels=attention_mask.clone(),
+                    labels=labels,
                     img_id=self.config.image_token_id,
                     num_image_token=[len(i) for i in grid_txy_list]
                 )
@@ -2260,6 +2262,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
             rope_deltas=self.rope_deltas,
+            labels=labels,
         )
         return output if return_dict else output.to_tuple()
 
@@ -2444,6 +2447,7 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
 
         loss = None
         import pdb;pdb.set_trace()
+        update_labels=outputs[-1]
         if labels is not None:
             loss = self.loss_function(logits=logits, labels=labels, vocab_size=self.config.vocab_size)
 
