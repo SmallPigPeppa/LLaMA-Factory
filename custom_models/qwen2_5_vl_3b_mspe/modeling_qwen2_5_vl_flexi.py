@@ -983,7 +983,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         # import pdb;pdb.set_trace()
 
         # concate hidden_states pos_emb
-        hidden_states = torch.cat(hidden_states_list, dim=0)
+        hidden_states = torch.cat(hidden_states_list, dim=0).contiguous()
         pos_tensor_1 = torch.cat([x[0] for x in pos_emb_list], dim=0)
         pos_tensor_2 = torch.cat([x[1] for x in pos_emb_list], dim=0)
         pos_emb = (pos_tensor_1, pos_tensor_2)
@@ -2177,7 +2177,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             inputs_embeds = self.get_input_embeddings()(input_ids)
             if pixel_values is not None:
                 # import pdb;pdb.set_trace()
-                image_embeds = self.get_image_features(pixel_values.contiguous(), image_grid_thw)
+                image_embeds = self.get_image_features(pixel_values, image_grid_thw)
                 # position_ids = update_position_ids(position_ids=position_ids,grid_txy_list=grid_txy_list,ids=input_ids,img_id=self.config.image_token_id)
                 # inputs_embeds, input_ids, attention_mask, labels = update_input_embeds_ids_masks_labels(
                 #     embeds=inputs_embeds,
