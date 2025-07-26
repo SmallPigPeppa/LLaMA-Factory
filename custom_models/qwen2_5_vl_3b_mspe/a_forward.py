@@ -3,6 +3,36 @@ import torch
 from custom_models.qwen2_5_vl_3b_mspe.debug_utilsv2 import repatchify
 
 
+def flatten_to_merge_idx(self, grid_thw: torch.Tensor, merge_size: int) -> torch.Tensor:
+    """
+    Convert a batch of grid_thw into continuous merged indices.
+
+    Args:
+        grid_thw (torch.Tensor): Shape (batch_size, 3), each row is [t, h, w].
+        merge_size (int): The size of the merge block.
+
+    Returns:
+        torch.Tensor: Flattened indices for the entire batch, continuous.
+    """
+    batch_size = grid_thw.size(0)
+    batch_indices = []
+    offset = 0
+
+    for i in range(batch_size):
+        t, h, w = grid_thw[i].tolist()
+        idx = torch.arange(t * h * w, dtype=torch.long).reshape(t, h, w)
+        # Reshape into blocks and rearrange axes for merged blocks
+        idx = idx.reshape(t, h // merge_size, merge_size, w // merge_size, merge_size)
+        idx = idx.permute(0, 1, 3, 2, 4).contiguous()
+        idx = idx.flatten() + offset
+
+        batch_indices.append(idx)
+        offset += t * h * w
+
+    return torch.cat(batch_indices, dim=0)
+
+
+
 def forward_old(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> torch.Tensor:
     """
     Args:
