@@ -675,7 +675,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             )
             f2m = flatten_to_merge_idx(grid_thw=grid_thw_ps[ps], merge_size=self.spatial_merge_size)
             hidden_states_ps[ps] = hidden_states_rep[f2m]
-            hidden_states_ps[ps] = self.patch_embed(hidden_states_ps[ps])
+            hidden_states_ps[ps] = self.patch_embed(hidden_states_ps[ps],patch_size=ps)
             rotary_pos_emb_ps[ps] = self.rot_pos_emb(grid_thw_ps[ps])
             win, cu = self.get_window_index(grid_thw_ps[ps])
             cu = torch.tensor(
