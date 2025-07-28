@@ -653,7 +653,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             `torch.Tensor`: hidden_states.
         """
 
-        patch_sizes = [7, 14, 28]
+        # patch_sizes = [7, 14, 28]
+        # patch_sizes = [7, 14]
         grid_thw_ps = {}
         hidden_states_ps = {}
         rotary_pos_emb_ps = {}
@@ -705,7 +706,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         import pdb;pdb.set_trace()
         # window patchsize
-        window_adp_ps = [random.choice([7, 14, 28]) for _ in range(len(cu_window_seqlens_ps[14]) - 1)]
+        window_adp_ps = [random.choice(patch_sizes) for _ in range(len(cu_window_seqlens_ps[14]) - 1)]
         hidden_states, position_embeddings, window_index, cu_window_seqlens = recompose_windows(
             window_adp_ps,
             hidden_states_ps,
