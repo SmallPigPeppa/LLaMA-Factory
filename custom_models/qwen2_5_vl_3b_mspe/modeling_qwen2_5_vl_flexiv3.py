@@ -653,7 +653,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             `torch.Tensor`: hidden_states.
         """
 
-        # patch_sizes = [7, 14, 28]
+        patch_sizes = [7, 14, 28]
         # patch_sizes = [7, 14]
         grid_thw_ps = {}
         hidden_states_ps = {}
