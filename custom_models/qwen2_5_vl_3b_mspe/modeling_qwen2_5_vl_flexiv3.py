@@ -581,11 +581,11 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         return window_index, cu_window_seqlens
 
-    def get_window_index(self, grid_thw, window_size, patch_size):
+    def get_window_index(self, grid_thw, patch_size):
         window_index: list = []
         cu_window_seqlens: list = [0]
         window_index_id = 0
-        vit_merger_window_size = window_size // self.spatial_merge_size // patch_size
+        vit_merger_window_size = self.window_size // self.spatial_merge_size // patch_size
 
         for grid_t, grid_h, grid_w in grid_thw:
             llm_grid_h, llm_grid_w = (
@@ -719,7 +719,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             hidden_states_ps[ps] = hidden_states_rep[f2m]
             hidden_states_ps[ps] = self.patch_embed(hidden_states_ps[ps], patch_size=ps)
             rotary_pos_emb_ps[ps] = self.rot_pos_emb(grid_thw_ps[ps])
-            win, cu = self.get_window_index(grid_thw_ps[ps], window_size=int(self.window_size*self.patch_size/ps), patch_size=ps)
+            win, cu = self.get_window_index(grid_thw_ps[ps], patch_size=ps)
             cu = torch.tensor(
                 cu,
                 device=hidden_states.device,
