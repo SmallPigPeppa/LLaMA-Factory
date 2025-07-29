@@ -59,7 +59,7 @@ logger = logging.get_logger(__name__)
 
 import random
 import numpy as np
-from .aaa_update import update_input_embeds_ids_masks_labels,update_position_ids
+from .aaa_update import update_input_embeds_ids_masks_labels, update_position_ids
 
 
 class Qwen2_5_VLMLP(nn.Module):
@@ -540,11 +540,52 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         rotary_pos_emb = rotary_pos_emb_full[pos_ids].flatten(1)
         return rotary_pos_emb
 
-    def get_window_index(self, grid_thw):
+    def get_window_index_old(self, grid_thw):
         window_index: list = []
         cu_window_seqlens: list = [0]
         window_index_id = 0
         vit_merger_window_size = self.window_size // self.spatial_merge_size // self.patch_size
+
+        for grid_t, grid_h, grid_w in grid_thw:
+            llm_grid_h, llm_grid_w = (
+                grid_h // self.spatial_merge_size,
+                grid_w // self.spatial_merge_size,
+            )
+            index = torch.arange(grid_t * llm_grid_h * llm_grid_w).reshape(grid_t, llm_grid_h, llm_grid_w)
+            pad_h = vit_merger_window_size - llm_grid_h % vit_merger_window_size
+            pad_w = vit_merger_window_size - llm_grid_w % vit_merger_window_size
+            num_windows_h = (llm_grid_h + pad_h) // vit_merger_window_size
+            num_windows_w = (llm_grid_w + pad_w) // vit_merger_window_size
+            index_padded = F.pad(index, (0, pad_w, 0, pad_h), "constant", -100)
+            index_padded = index_padded.reshape(
+                grid_t,
+                num_windows_h,
+                vit_merger_window_size,
+                num_windows_w,
+                vit_merger_window_size,
+            )
+            index_padded = index_padded.permute(0, 1, 3, 2, 4).reshape(
+                grid_t,
+                num_windows_h * num_windows_w,
+                vit_merger_window_size,
+                vit_merger_window_size,
+            )
+            seqlens = (index_padded != -100).sum([2, 3]).reshape(-1)
+            index_padded = index_padded.reshape(-1)
+            index_new = index_padded[index_padded != -100]
+            window_index.append(index_new + window_index_id)
+            cu_seqlens_tmp = seqlens.cumsum(0) * self.spatial_merge_unit + cu_window_seqlens[-1]
+            cu_window_seqlens.extend(cu_seqlens_tmp.tolist())
+            window_index_id += (grid_t * llm_grid_h * llm_grid_w).item()
+        window_index = torch.cat(window_index, dim=0)
+
+        return window_index, cu_window_seqlens
+
+    def get_window_index(self, grid_thw, window_size, patch_size):
+        window_index: list = []
+        cu_window_seqlens: list = [0]
+        window_index_id = 0
+        vit_merger_window_size = window_size // self.spatial_merge_size // patch_size
 
         for grid_t, grid_h, grid_w in grid_thw:
             llm_grid_h, llm_grid_w = (
@@ -640,8 +681,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         return hidden_states
 
-
-    def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> [torch.Tensor,torch.Tensor]:
+    def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> [torch.Tensor, torch.Tensor]:
         """
         Args:
             hidden_states (`torch.Tensor` of shape `(seq_len, hidden_size)`):
@@ -661,8 +701,9 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         window_index_ps = {}
         cu_window_seqlens_ps = {}
         position_embeddings_ps = {}
-        from .a_forward import merge_to_flatten_idx,repatchify,flatten_to_merge_idx,recompose_windows
-        import pdb;pdb.set_trace()
+        from .a_forward import merge_to_flatten_idx, repatchify, flatten_to_merge_idx, recompose_windows
+        import pdb;
+        pdb.set_trace()
 
         # initial
         for ps in patch_sizes:
@@ -676,9 +717,9 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             )
             f2m = flatten_to_merge_idx(grid_thw=grid_thw_ps[ps], merge_size=self.spatial_merge_size)
             hidden_states_ps[ps] = hidden_states_rep[f2m]
-            hidden_states_ps[ps] = self.patch_embed(hidden_states_ps[ps],patch_size=ps)
+            hidden_states_ps[ps] = self.patch_embed(hidden_states_ps[ps], patch_size=ps)
             rotary_pos_emb_ps[ps] = self.rot_pos_emb(grid_thw_ps[ps])
-            win, cu = self.get_window_index(grid_thw_ps[ps])
+            win, cu = self.get_window_index(grid_thw_ps[ps], window_size=int(self.window_size*self.patch_size/ps), patch_size=ps)
             cu = torch.tensor(
                 cu,
                 device=hidden_states.device,
@@ -703,8 +744,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             emb = torch.cat((rotary_pos_emb_ps[ps], rotary_pos_emb_ps[ps]), dim=-1)
             position_embeddings_ps[ps] = (emb.cos(), emb.sin())
 
-
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
         # window patchsize
         window_adp_ps = [random.choice(patch_sizes) for _ in range(len(cu_window_seqlens_ps[14]) - 1)]
         hidden_states, position_embeddings, window_index, cu_window_seqlens = recompose_windows(
@@ -745,7 +786,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         reverse_indices = torch.argsort(window_index)
         hidden_states = hidden_states[reverse_indices, :]
         window_index = window_index[reverse_indices]
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
         token_ithw = None
 
         return hidden_states, token_ithw
@@ -1830,8 +1872,6 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
         image_embeds = self.visual(pixel_values, grid_thw=image_grid_thw)
         return image_embeds
 
-
-
     @auto_docstring
     def forward(
             self,
@@ -1879,7 +1919,8 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             if pixel_values is not None:
                 # import pdb;pdb.set_trace()
                 image_embeds, grid_txy_list = self.get_image_features(pixel_values, image_grid_thw)
-                position_ids = update_position_ids(position_ids=position_ids,grid_txy_list=grid_txy_list,ids=input_ids,img_id=self.config.image_token_id)
+                position_ids = update_position_ids(position_ids=position_ids, grid_txy_list=grid_txy_list,
+                                                   ids=input_ids, img_id=self.config.image_token_id)
                 inputs_embeds, input_ids, attention_mask, labels = update_input_embeds_ids_masks_labels(
                     embeds=inputs_embeds,
                     ids=input_ids,
@@ -1891,8 +1932,8 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
                 # inputs_embeds = self.get_input_embeddings()(input_ids)
                 # other params: past_key_values, use_cache, cache_position is None
                 if any(x is not None for x in [past_key_values, use_cache, cache_position]):
-                    import pdb;pdb.set_trace()
-
+                    import pdb;
+                    pdb.set_trace()
 
                 n_image_tokens = (input_ids == self.config.image_token_id).sum().item()
                 n_image_features = image_embeds.shape[0]
@@ -2174,7 +2215,6 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
         if not return_dict:
             output = (logits,) + outputs[1:]
             return (loss,) + output if loss is not None else output
-
 
         return Qwen2_5_VLCausalLMOutputWithPast(
             loss=loss,
