@@ -29,7 +29,8 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
         # window_index_list.append(window_index_ps[ps][start:end])
         # unified to ps=7
         scale = torch.tensor((ps / 7) ** 2, dtype=window_index_ps[ps].dtype, device=window_index_ps[ps].device)
-        window_index_list.append(window_index_ps[ps][start:end] * scale)
+        # window_index_list.append(window_index_ps[ps][start:end] * scale)
+        window_index_list.append(window_index_ps[ps][start:end])
 
         # 更新cursor
         cursor += 1
