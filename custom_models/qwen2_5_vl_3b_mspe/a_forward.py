@@ -10,15 +10,12 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
     window_index_list = []
     cu_window_seqlens = [0]
 
-    # 当前窗口位置
-    cursor = 0
 
     # 遍历每个窗口及其对应的patch size
-    for ps in window_adp_ps:
+    for idx, ps in enumerate(window_adp_ps):
         # 获取当前窗口的起止位置
-        cu_seqlens = cu_window_seqlens_ps[ps]
-        start = cu_seqlens[cursor]
-        end = cu_seqlens[cursor + 1]
+        start = cu_window_seqlens_ps[ps][idx]
+        end = cu_window_seqlens_ps[ps][idx + 1]
 
         # 提取对应窗口的数据
         hidden_states_list.append(hidden_states_ps[ps][start:end])
@@ -30,10 +27,8 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
         # unified to ps=7
         scale = torch.tensor((ps / 7) ** 2, dtype=window_index_ps[ps].dtype, device=window_index_ps[ps].device)
         # window_index_list.append(window_index_ps[ps][start:end] * scale)
+        import pdb; pdb.set_trace()
         window_index_list.append(window_index_ps[ps][start:end])
-
-        # 更新cursor
-        cursor += 1
 
         # 更新累计长度
         cu_window_seqlens.append(cu_window_seqlens[-1] + (end - start))
