@@ -3,6 +3,7 @@ import random
 from custom_models.qwen2_5_vl_3b_mspe.debug_utilsv2 import repatchify
 import torch.nn.functional as F
 
+
 def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps):
     hidden_states_list = []
     position_embeddings_list = []
@@ -10,11 +11,10 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
     cu_window_seqlens = [0]
 
     # 当前窗口位置
-    cursor=0
+    cursor = 0
 
     # 遍历每个窗口及其对应的patch size
     for ps in window_adp_ps:
-
         # 获取当前窗口的起止位置
         cu_seqlens = cu_window_seqlens_ps[ps]
         start = cu_seqlens[cursor]
@@ -42,13 +42,16 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
     position_embeddings_cos = torch.cat([emb[0] for emb in position_embeddings_list], dim=0)
     position_embeddings_sin = torch.cat([emb[1] for emb in position_embeddings_list], dim=0)
     window_index = torch.cat(window_index_list, dim=0)
-    cu_window_seqlens= torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype, device=cu_window_seqlens[-1].device)
+    cu_window_seqlens = torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype,
+                                     device=cu_window_seqlens[-1].device)
 
     position_embeddings = (position_embeddings_cos, position_embeddings_sin)
 
     return hidden_states, position_embeddings, window_index, cu_window_seqlens
 
-def recompose_windows_old(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps):
+
+def recompose_windows_old(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps,
+                          cu_window_seqlens_ps):
     hidden_states_list = []
     position_embeddings_list = []
     window_index_list = []
@@ -88,7 +91,8 @@ def recompose_windows_old(window_adp_ps, hidden_states_ps, position_embeddings_p
     position_embeddings_cos = torch.cat([emb[0] for emb in position_embeddings_list], dim=0)
     position_embeddings_sin = torch.cat([emb[1] for emb in position_embeddings_list], dim=0)
     window_index = torch.cat(window_index_list, dim=0)
-    cu_window_seqlens= torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype, device=cu_window_seqlens[-1].device)
+    cu_window_seqlens = torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype,
+                                     device=cu_window_seqlens[-1].device)
 
     position_embeddings = (position_embeddings_cos, position_embeddings_sin)
 
