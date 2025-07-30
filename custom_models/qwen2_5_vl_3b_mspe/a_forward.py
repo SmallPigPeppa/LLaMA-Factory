@@ -22,7 +22,7 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
 
     # pick indices and sample IDs
     idx = window_index_ps[ps][start:end].type_as(cu)
-    import pdb;pdb.set_trace()
+    # import pdb;pdb.set_trace()
     I = torch.bucketize(idx[0], cu[1:], right=False)
     local = idx - cu[I]
 
@@ -42,7 +42,6 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     return scale_idx
 
 
-# example usage
 
 
 def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,
@@ -78,8 +77,7 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
     hidden_states = torch.cat(hidden_states_list, dim=0)
     position_embeddings_cos = torch.cat([emb[0] for emb in position_embeddings_list], dim=0)
     position_embeddings_sin = torch.cat([emb[1] for emb in position_embeddings_list], dim=0)
-    import pdb;
-    pdb.set_trace()
+    import pdb;pdb.set_trace()
     window_index = torch.cat(window_index_list, dim=0)
     cu_window_seqlens = torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype,
                                      device=cu_window_seqlens[-1].device)
