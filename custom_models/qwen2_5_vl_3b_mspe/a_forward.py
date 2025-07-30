@@ -7,13 +7,13 @@ import torch
 import torch.nn.functional as F
 
 
-def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end):
+def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spatial_merge_unit):
     # compute scale factor
     f = ps // min_ps
 
     # per-sample dims (T, H, W)
     dims = grid_thw_ps[ps]  # [N,3]
-    areas = dims[:, 1] * dims[:, 2]  # windows per frame
+    areas = dims[:, 1] * dims[:, 2] // spatial_merge_unit  # windows per frame
     counts = dims[:, 0]  # frames per sample
 
     # cumulative window counts
@@ -22,10 +22,10 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end):
 
     # pick indices and sample IDs
     idx = window_index_ps[ps][start:end]
-    import pdb; pdb.set_trace()
+    import pdb;
+    pdb.set_trace()
     I = torch.bucketize(idx, cu[1:], right=False)
     local = idx - cu[I]
-
 
     # unravel to (t,h,w)
     T, H, W = dims[I].unbind(1)
@@ -68,7 +68,7 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
             position_embeddings_ps[ps][1][start:end]
         ))
         # unified to min patchsize
-        new_inds = scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end)
+        new_inds = scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end, spatial_merge_unit)
         window_index_list.append(new_inds)
 
         # 更新累计长度
