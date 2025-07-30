@@ -794,6 +794,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         hidden_states = hidden_states[reverse_indices, :]
         token_itxy = token_itxy[reverse_indices]
 
+        import pdb; pdb.set_trace()
         return hidden_states, token_itxy
 
 
