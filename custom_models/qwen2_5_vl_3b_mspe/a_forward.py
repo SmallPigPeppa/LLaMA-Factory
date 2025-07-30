@@ -37,8 +37,8 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     return scale_idx, torch.tensor([I, t, h * f, w * f]).type_as(cu)
 
 
-def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,
-                      spatial_merge_unit, spatial_merge_size, grid_thw_ps):
+def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,grid_thw_ps,
+                      spatial_merge_unit, spatial_merge_size):
     hidden_states_list = []
     position_embeddings_list = []
     window_index_list = []

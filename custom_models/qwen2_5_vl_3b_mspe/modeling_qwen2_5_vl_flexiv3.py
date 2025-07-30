@@ -753,9 +753,9 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             position_embeddings_ps,
             window_index_ps,
             cu_window_seqlens_ps,
+            grid_thw_ps,
             self.spatial_merge_unit,
-            self.spatial_merge_size,
-            grid_thw_ps
+            self.spatial_merge_size
         )
 
         cu_seqlens = torch.repeat_interleave(grid_thw[:, 1] * grid_thw[:, 2], grid_thw[:, 0]).cumsum(
