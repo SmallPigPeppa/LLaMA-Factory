@@ -37,6 +37,8 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
 
     scale_local = t * (H0 * W0) + (h * f) * W0 + (w * f)
     scale_idx = scale_local + cu[I] * f * f
+    if scale_idx[0]==0:
+        import pdb; pdb.set_trace()
 
     # return rescaled indices
     return scale_idx
