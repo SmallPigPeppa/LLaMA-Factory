@@ -766,10 +766,12 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
         )
         cu_seqlens = F.pad(cu_seqlens, (1, 0), value=0)
-        import pdb;pdb.set_trace()
+
         # update cu seq lens
         cu_ps_list = cu_window_seqlens_ps[self.patch_size].tolist()
         updated_cu_seqlens = [cu_window_seqlens[cu_ps_list.index(seq)] for seq in cu_seqlens]
+
+        import pdb;pdb.set_trace()
 
         # window attention
         for layer_num, blk in enumerate(self.blocks):
