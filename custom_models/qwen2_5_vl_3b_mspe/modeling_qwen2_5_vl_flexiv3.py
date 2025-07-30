@@ -791,8 +791,9 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         hidden_states = self.merger(hidden_states)
         reverse_indices = torch.argsort(window_index)
         hidden_states = hidden_states[reverse_indices, :]
-        window_index = window_index[reverse_indices]
         import pdb;pdb.set_trace()
+        window_index_o = window_index[reverse_indices]
+
         token_ithw = None
 
         return hidden_states, token_ithw
