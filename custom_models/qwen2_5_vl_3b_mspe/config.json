@@ -4,8 +4,8 @@
   ],
   "auto_map": {
     "AutoConfig": "configuration_qwen2_5_vl.Qwen2_5_VLConfig",
-    "AutoModel": "modeling_qwen2_5_vl_flexiv3.Qwen2_5_VLForConditionalGeneration",
-    "AutoModelForCausalLM": "modeling_qwen2_5_vl_flexiv3.Qwen2_5_VLForConditionalGeneration"
+    "AutoModel": "modeling_qwen2_5_vl_mspe.Qwen2_5_VLForConditionalGeneration",
+    "AutoModelForCausalLM": "modeling_qwen2_5_vl_mspe.Qwen2_5_VLForConditionalGeneration"
   },
   "attention_dropout": 0.0,
   "bos_token_id": 151643,
