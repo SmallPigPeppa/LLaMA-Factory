@@ -81,10 +81,6 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
 
     # for token itxy
     token_itxy = torch.cat(token_itxy_list, dim=0)  # [N, 4]
-    I_all = token_itxy[:, 0]
-    txy_all = token_itxy[:, 1:]  # [N, 3]
-    unique_I = I_all.unique(sorted=True)
-    token_itxy = [txy_all[I_all == I] for I in unique_I]
 
     return hidden_states, position_embeddings, window_index, cu_window_seqlens, token_itxy
 
