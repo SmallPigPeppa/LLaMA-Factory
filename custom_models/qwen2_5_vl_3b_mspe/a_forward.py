@@ -34,8 +34,8 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     scale_idx = scale_local + cu[I] * f * f
 
     # return rescaled indices
-    import pdb; pdb.set_trace()
-    return scale_idx, torch.tensor([I, t, h * f, w * f]).type_as(cu)
+    token_itxy = torch.stack([I.expand(t.shape[0]), t, h * f, w * f], dim=1).type_as(cu)
+    return scale_idx, token_itxy
 
 
 def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,grid_thw_ps,
