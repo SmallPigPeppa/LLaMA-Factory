@@ -798,7 +798,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         unique_I = I_all.unique(sorted=True)
         token_itxy = [txy_all[I_all == I] for I in unique_I]
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         return hidden_states, token_itxy
 
 
