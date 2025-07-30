@@ -4,18 +4,20 @@ from custom_models.qwen2_5_vl_3b_mspe.debug_utilsv2 import repatchify
 import torch.nn.functional as F
 
 
-def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps):
+def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,
+                      spatial_merge_unit):
     hidden_states_list = []
     position_embeddings_list = []
     window_index_list = []
     cu_window_seqlens = [0]
-
 
     # 遍历每个窗口及其对应的patch size
     for idx, ps in enumerate(window_adp_ps):
         # 获取当前窗口的起止位置
         start = cu_window_seqlens_ps[ps][idx]
         end = cu_window_seqlens_ps[ps][idx + 1]
+        win_start = cu_window_seqlens_ps[ps][idx] // spatial_merge_unit
+        win_end = cu_window_seqlens_ps[ps][idx + 1] // spatial_merge_unit
 
         # 提取对应窗口的数据
         hidden_states_list.append(hidden_states_ps[ps][start:end])
@@ -26,9 +28,7 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
         # window_index_list.append(window_index_ps[ps][start:end])
         # unified to ps=7
         scale = torch.tensor((ps / 7) ** 2, dtype=window_index_ps[ps].dtype, device=window_index_ps[ps].device)
-        # window_index_list.append(window_index_ps[ps][start:end] * scale)
-
-        window_index_list.append(window_index_ps[ps][start:end])
+        window_index_list.append(window_index_ps[ps][win_start:win_end] * scale)
 
         # 更新累计长度
         cu_window_seqlens.append(cu_window_seqlens[-1] + (end - start))
@@ -37,7 +37,8 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
     hidden_states = torch.cat(hidden_states_list, dim=0)
     position_embeddings_cos = torch.cat([emb[0] for emb in position_embeddings_list], dim=0)
     position_embeddings_sin = torch.cat([emb[1] for emb in position_embeddings_list], dim=0)
-    import pdb;pdb.set_trace()
+    import pdb;
+    pdb.set_trace()
     window_index = torch.cat(window_index_list, dim=0)
     cu_window_seqlens = torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype,
                                      device=cu_window_seqlens[-1].device)

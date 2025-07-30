@@ -753,7 +753,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             hidden_states_ps,
             position_embeddings_ps,
             window_index_ps,
-            cu_window_seqlens_ps
+            cu_window_seqlens_ps,
+            self.spatial_merge_unit
         )
 
         cu_seqlens = torch.repeat_interleave(grid_thw[:, 1] * grid_thw[:, 2], grid_thw[:, 0]).cumsum(
@@ -786,8 +787,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         reverse_indices = torch.argsort(window_index)
         hidden_states = hidden_states[reverse_indices, :]
         window_index = window_index[reverse_indices]
-        import pdb;
-        pdb.set_trace()
+        import pdb;pdb.set_trace()
         token_ithw = None
 
         return hidden_states, token_ithw
