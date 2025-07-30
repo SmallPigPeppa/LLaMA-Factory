@@ -4,12 +4,12 @@ from custom_models.qwen2_5_vl_3b_mspe.debug_utilsv2 import repatchify
 import torch.nn.functional as F
 
 
-def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,
-                      spatial_merge_unit):
+def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,spatial_merge_unit):
     hidden_states_list = []
     position_embeddings_list = []
     window_index_list = []
     cu_window_seqlens = [0]
+    min_ps = min(window_adp_ps)
 
     # 遍历每个窗口及其对应的patch size
     for idx, ps in enumerate(window_adp_ps):
@@ -26,8 +26,8 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
             position_embeddings_ps[ps][1][start:end]
         ))
         # window_index_list.append(window_index_ps[ps][start:end])
-        # unified to ps=7
-        scale = torch.tensor((ps / 7) ** 2, dtype=window_index_ps[ps].dtype, device=window_index_ps[ps].device)
+        # unified to min patchsize
+        scale = torch.tensor((ps / min_ps) ** 2, dtype=window_index_ps[ps].dtype, device=window_index_ps[ps].device)
         window_index_list.append(window_index_ps[ps][win_start:win_end] * scale)
 
         # 更新累计长度
