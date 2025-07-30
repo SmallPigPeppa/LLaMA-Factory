@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 
 
-def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spatial_merge_unit,spatial_merge_size):
+def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spatial_merge_unit, spatial_merge_size):
     # compute scale factor
     f = ps // min_ps
 
@@ -32,8 +32,8 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     t, h, w = torch.unravel_index(local, (T.item(), H.item(), W.item()))
 
     # target grid dims
-    H0 = grid_thw_ps[min_ps][I, 1]// spatial_merge_size
-    W0 = grid_thw_ps[min_ps][I, 2]// spatial_merge_size
+    H0 = grid_thw_ps[min_ps][I, 1] // spatial_merge_size
+    W0 = grid_thw_ps[min_ps][I, 2] // spatial_merge_size
 
     scale_local = t * (H0 * W0) + (h * f) * W0 + (w * f)
     scale_idx = scale_local + cu[I]
@@ -42,10 +42,8 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     return scale_idx
 
 
-
-
 def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,
-                      spatial_merge_unit,spatial_merge_size, grid_thw_ps):
+                      spatial_merge_unit, spatial_merge_size, grid_thw_ps):
     hidden_states_list = []
     position_embeddings_list = []
     window_index_list = []
@@ -67,7 +65,7 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
             position_embeddings_ps[ps][1][start:end]
         ))
         # unified to min patchsize
-        new_inds = scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end, spatial_merge_unit, spatial_merge_size)
+        new_inds= scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end, spatial_merge_unit,spatial_merge_size)
         window_index_list.append(new_inds)
 
         # 更新累计长度
@@ -77,7 +75,7 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
     hidden_states = torch.cat(hidden_states_list, dim=0)
     position_embeddings_cos = torch.cat([emb[0] for emb in position_embeddings_list], dim=0)
     position_embeddings_sin = torch.cat([emb[1] for emb in position_embeddings_list], dim=0)
-    import pdb;pdb.set_trace()
+    import pdb; pdb.set_trace()
     window_index = torch.cat(window_index_list, dim=0)
     cu_window_seqlens = torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype,
                                      device=cu_window_seqlens[-1].device)
