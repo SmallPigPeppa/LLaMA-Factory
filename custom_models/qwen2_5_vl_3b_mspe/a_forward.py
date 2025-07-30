@@ -28,13 +28,14 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
 
     # unravel to (t,h,w)
     T, H, W = dims[I]
-    t, h, w = torch.unravel_index(local, (T, H//spatial_merge_size, W//spatial_merge_size))
+    H, W = H // spatial_merge_size, W // spatial_merge_size
+    t, h, w = torch.unravel_index(local, (T.item(), H.item(), W.item()))
 
     # target grid dims
-    H0 = grid_thw_ps[min_ps][I, 1]
-    W0 = grid_thw_ps[min_ps][I, 2]
+    H0 = grid_thw_ps[min_ps][I, 1]// spatial_merge_size
+    W0 = grid_thw_ps[min_ps][I, 2]// spatial_merge_size
 
-    scale_local = torch.ravel_multi_index((t, h * f, w * f), (T, H0//spatial_merge_size, W0//spatial_merge_size))
+    scale_local = t * (H0 * W0) + (h * f) * W0 + (w * f)
     scale_idx = scale_local + cu[I]
 
     # return rescaled indices
