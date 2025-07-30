@@ -34,6 +34,7 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     scale_idx = scale_local + cu[I] * f * f
 
     # return rescaled indices
+    import pdb; pdb.set_trace()
     return scale_idx, torch.tensor([I, t, h * f, w * f]).type_as(cu)
 
 
