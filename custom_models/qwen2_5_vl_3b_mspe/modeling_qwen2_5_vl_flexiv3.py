@@ -755,6 +755,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             window_index_ps,
             cu_window_seqlens_ps,
             self.spatial_merge_unit,
+            self.spatial_merge_size,
             grid_thw_ps
         )
 

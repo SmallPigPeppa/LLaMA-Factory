@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 
 
-def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spatial_merge_unit):
+def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spatial_merge_unit,spatial_merge_size):
     # compute scale factor
     f = ps // min_ps
 
@@ -21,21 +21,20 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     cu = F.pad(cu, (1, 0), value=0)
 
     # pick indices and sample IDs
-    idx = window_index_ps[ps][start:end]
-    import pdb;
-    pdb.set_trace()
-    I = torch.bucketize(idx, cu[1:], right=False)
+    idx = window_index_ps[ps][start:end].type_as(cu)
+    import pdb;pdb.set_trace()
+    I = torch.bucketize(idx[0], cu[1:], right=False)
     local = idx - cu[I]
 
     # unravel to (t,h,w)
-    T, H, W = dims[I].unbind(1)
-    t, h, w = torch.unravel_index(local, (T[0].item(), H[0].item(), W[0].item()))
+    T, H, W = dims[I]
+    t, h, w = torch.unravel_index(local, (T, H//spatial_merge_size, W//spatial_merge_size))
 
     # target grid dims
     H0 = grid_thw_ps[min_ps][I, 1]
     W0 = grid_thw_ps[min_ps][I, 2]
 
-    scale_local = torch.ravel_multi_index((t, h * f, w * f), (T[0].item(), H0[0].item(), W0[0].item()))
+    scale_local = torch.ravel_multi_index((t, h * f, w * f), (T, H0//spatial_merge_size, W0//spatial_merge_size))
     scale_idx = scale_local + cu[I]
 
     # return rescaled indices
@@ -46,7 +45,7 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
 
 
 def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,
-                      spatial_merge_unit, grid_thw_ps):
+                      spatial_merge_unit,spatial_merge_size, grid_thw_ps):
     hidden_states_list = []
     position_embeddings_list = []
     window_index_list = []
@@ -68,7 +67,7 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
             position_embeddings_ps[ps][1][start:end]
         ))
         # unified to min patchsize
-        new_inds = scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end, spatial_merge_unit)
+        new_inds = scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end, spatial_merge_unit, spatial_merge_size)
         window_index_list.append(new_inds)
 
         # 更新累计长度
