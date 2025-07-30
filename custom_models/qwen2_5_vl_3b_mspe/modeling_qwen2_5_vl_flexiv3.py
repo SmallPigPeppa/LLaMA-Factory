@@ -770,6 +770,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         # update cu seq lens
         cu_ps_list = cu_window_seqlens_ps[self.patch_size].tolist()
         updated_cu_seqlens = [cu_window_seqlens[cu_ps_list.index(seq)] for seq in cu_seqlens]
+        updated_cu_seqlens = torch.tensor(updated_cu_seqlens, device=cu_seqlens.device, dtype=cu_seqlens.dtype)
 
         import pdb;pdb.set_trace()
 
