@@ -60,6 +60,7 @@ logger = logging.get_logger(__name__)
 import random
 import numpy as np
 from .aaa_update import update_input_embeds_ids_masks_labels, update_position_ids
+from .a_forward import merge_to_flatten_idx, repatchify, flatten_to_merge_idx, recompose_windows
 
 
 class Qwen2_5_VLMLP(nn.Module):
@@ -701,9 +702,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         window_index_ps = {}
         cu_window_seqlens_ps = {}
         position_embeddings_ps = {}
-        from .a_forward import merge_to_flatten_idx, repatchify, flatten_to_merge_idx, recompose_windows
-        import pdb;
-        pdb.set_trace()
+
+        # import pdb;pdb.set_trace()
 
         # initial
         for ps in patch_sizes:
@@ -744,11 +744,10 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             emb = torch.cat((rotary_pos_emb_ps[ps], rotary_pos_emb_ps[ps]), dim=-1)
             position_embeddings_ps[ps] = (emb.cos(), emb.sin())
 
-        import pdb;
-        pdb.set_trace()
+        # import pdb;pdb.set_trace()
         # window patchsize
         window_adp_ps = [random.choice(patch_sizes) for _ in range(len(cu_window_seqlens_ps[14]) - 1)]
-        hidden_states, position_embeddings, window_index, cu_window_seqlens = recompose_windows(
+        hidden_states, position_embeddings, window_index, cu_window_seqlens, token_itxy = recompose_windows(
             window_adp_ps,
             hidden_states_ps,
             position_embeddings_ps,
@@ -774,7 +773,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         updated_cu_seqlens = [cu_window_seqlens[cu_ps_list.index(seq)] for seq in cu_seqlens]
         updated_cu_seqlens = torch.tensor(updated_cu_seqlens, device=cu_seqlens.device, dtype=cu_seqlens.dtype)
 
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
 
         # window attention
         for layer_num, blk in enumerate(self.blocks):
@@ -793,12 +792,9 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         hidden_states = self.merger(hidden_states)
         reverse_indices = torch.argsort(window_index)
         hidden_states = hidden_states[reverse_indices, :]
-        import pdb;pdb.set_trace()
-        window_index_o = window_index[reverse_indices]
+        token_itxy = token_itxy[reverse_indices]
 
-        token_ithw = None
-
-        return hidden_states, token_ithw
+        return hidden_states, token_itxy
 
 
 @dataclass
@@ -1926,22 +1922,20 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             inputs_embeds = self.get_input_embeddings()(input_ids)
             if pixel_values is not None:
                 # import pdb;pdb.set_trace()
-                image_embeds, grid_txy_list = self.get_image_features(pixel_values, image_grid_thw)
-                position_ids = update_position_ids(position_ids=position_ids, grid_txy_list=grid_txy_list,
-                                                   ids=input_ids, img_id=self.config.image_token_id)
+                image_embeds, token_itxy = self.get_image_features(pixel_values, image_grid_thw)
+                position_ids = update_position_ids(position_ids=position_ids, token_itxy=token_itxy,ids=input_ids, img_id=self.config.image_token_id)
                 inputs_embeds, input_ids, attention_mask, labels = update_input_embeds_ids_masks_labels(
                     embeds=inputs_embeds,
                     ids=input_ids,
                     att_masks=attention_mask,
                     labels=labels,
                     img_id=self.config.image_token_id,
-                    num_image_token=[len(i) for i in grid_txy_list]
+                    num_image_token=[len(i) for i in token_itxy]
                 )
                 # inputs_embeds = self.get_input_embeddings()(input_ids)
                 # other params: past_key_values, use_cache, cache_position is None
                 if any(x is not None for x in [past_key_values, use_cache, cache_position]):
-                    import pdb;
-                    pdb.set_trace()
+                    import pdb;pdb.set_trace()
 
                 n_image_tokens = (input_ids == self.config.image_token_id).sum().item()
                 n_image_features = image_embeds.shape[0]

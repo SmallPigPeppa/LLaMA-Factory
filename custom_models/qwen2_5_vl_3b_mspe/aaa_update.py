@@ -87,7 +87,7 @@ def update_input_embeds_ids_masks_labels(
     return new_embeds, new_ids, new_att_mask, new_labels
 
 
-def update_position_ids(position_ids, grid_txy_list, ids, img_id):
+def update_position_ids(position_ids, token_itxy, ids, img_id):
     """
     position_ids: torch tensor, shape [3, batch, max_len]
     grid_txy_list: list of torch.Tensor, 每个样本grid_txy: [n_img_token, 3]
@@ -99,7 +99,7 @@ def update_position_ids(position_ids, grid_txy_list, ids, img_id):
 
     for b in range(batch_size):
         pos_ids = position_ids[:, b, :]  # [3, max_len]
-        grid_txy = grid_txy_list[b]  # [n_img_token, 3]
+        grid_txy = token_itxy[b]  # [n_img_token, 3]
         n_img_token = grid_txy.shape[0]
 
         # 1. 找到“图像”部分
@@ -141,11 +141,6 @@ def update_position_ids(position_ids, grid_txy_list, ids, img_id):
         out_list.append(merged)
         max_len_new = max(max_len_new, merged.shape[1])
 
-    # # 7. 补pad（统一到 batch 内最大长度）
-    # final_out = torch.ones((3, batch_size, max_len_new), dtype=position_ids.dtype, device=position_ids.device)
-    # for b, out in enumerate(out_list):
-    #     cur_len = out.shape[1]
-    #     final_out[:, b, :cur_len] = out
 
     # 7. 补pad（统一到 batch 内最大长度），每行repeat last col
     padded_pos = []
