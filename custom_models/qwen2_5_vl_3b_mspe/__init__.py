@@ -26,3 +26,7 @@ else:
 
     _file = globals()["__file__"]
     sys.modules[__name__] = _LazyModule(__name__, _file, define_import_structure(_file), module_spec=__spec__)
+
+from transformers import AutoImageProcessor
+from .A_image_processor import Qwen2VLImageProcessor
+AutoImageProcessor.register("Qwen2VLImageProcessorMSPE", Qwen2VLImageProcessor)
