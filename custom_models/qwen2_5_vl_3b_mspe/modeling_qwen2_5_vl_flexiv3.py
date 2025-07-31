@@ -770,7 +770,14 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         cu_seqlens = F.pad(cu_seqlens, (1, 0), value=0)
 
         # update cu seq lens
-        cu_ps_list = cu_window_seqlens_ps[self.patch_size].tolist()
+        _, cu_o = self.get_window_index(grid_thw, patch_size=self.patch_size)
+        cu_o = torch.tensor(
+            cu_o,
+            device=hidden_states.device,
+            dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
+        )
+        cu_o = torch.unique_consecutive(cu_o)
+        cu_ps_list = cu_o.tolist()
         updated_cu_seqlens = [cu_window_seqlens[cu_ps_list.index(seq)] for seq in cu_seqlens]
         updated_cu_seqlens = torch.tensor(updated_cu_seqlens, device=cu_seqlens.device, dtype=cu_seqlens.dtype)
 
