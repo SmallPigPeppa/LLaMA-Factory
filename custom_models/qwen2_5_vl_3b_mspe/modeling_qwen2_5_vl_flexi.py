@@ -744,7 +744,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             emb = torch.cat((rotary_pos_emb_ps[ps], rotary_pos_emb_ps[ps]), dim=-1)
             position_embeddings_ps[ps] = (emb.cos(), emb.sin())
 
-        # import pdb;pdb.set_trace()
+        import pdb;pdb.set_trace()
         # window patchsize
         window_adp_ps = [random.choice(patch_sizes) for _ in range(len(cu_window_seqlens_ps[patch_sizes[0]]) - 1)]
         hidden_states, position_embeddings, window_index, cu_window_seqlens, token_itxy = recompose_windows(
