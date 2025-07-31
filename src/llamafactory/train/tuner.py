@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pdb;pdb.set_trace()
+# import pdb;pdb.set_trace()
 from transformers import AutoImageProcessor
 from custom_models.qwen2_5_vl_3b_mspe.A_image_processor import Qwen2VLImageProcessor
 AutoImageProcessor.register("Qwen2VLImageProcessorMSPE", Qwen2VLImageProcessor)
