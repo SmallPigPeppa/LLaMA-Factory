@@ -59,7 +59,7 @@ logger = logging.get_logger(__name__)
 
 import random
 import numpy as np
-from .aaa_update import update_input_embeds_ids_masks_labels, update_position_ids,update_ids_masks_labels
+from .aaa_update import update_position_ids,update_ids_masks_labels
 from .a_forward import merge_to_flatten_idx, repatchify, flatten_to_merge_idx, recompose_windows
 
 
