@@ -247,7 +247,7 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
         processed_images = []
         for image in images:
             if do_resize:
-                import pdb;pdb.set_trace()
+                # import pdb;pdb.set_trace()
                 resized_height, resized_width = smart_resize(
                     height,
                     width,
