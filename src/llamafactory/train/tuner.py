@@ -15,7 +15,9 @@
 from transformers import AutoImageProcessor
 from custom_models.qwen2_5_vl_3b_mspe.A_image_processor import Qwen2VLImageProcessor
 AutoImageProcessor.register("Qwen2VLImageProcessorMSPE", Qwen2VLImageProcessor)
-print(AutoImageProcessor.__dict__)
+# 用你的目录加载
+processor = AutoImageProcessor.from_pretrained("/home/tiger/LLaMA-Factory/custom_models/qwen2_5_vl_3b_mspe")
+print("Processor loaded type:", type(processor))
 
 
 
