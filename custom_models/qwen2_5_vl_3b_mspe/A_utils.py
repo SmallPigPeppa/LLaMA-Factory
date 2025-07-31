@@ -319,7 +319,7 @@ def update_position_ids(position_ids, token_itxy, ids, img_id):
         Z_new = int(max(t_max, x_max, y_max)) + 1
 
         # 3. 前缀
-        left_pos, img_pos, right_pos = t_row[:,:s], t_row[:,s:e_ix], t_row[:,e_ix:]
+        left_pos, img_pos, right_pos =  pos_ids[:,:s],  pos_ids[:,s:e_ix],  pos_ids[:,e_ix:]
         # 4. 新的图像部分
         new_img_pos = torch.zeros((3, n_img_token), dtype=pos_ids.dtype, device=pos_ids.device)
         for i in range(n_img_token):
