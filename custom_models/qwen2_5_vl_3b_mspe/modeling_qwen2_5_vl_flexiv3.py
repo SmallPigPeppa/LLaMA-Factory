@@ -59,7 +59,7 @@ logger = logging.get_logger(__name__)
 
 import random
 import numpy as np
-from .aaa_update import update_input_embeds_ids_masks_labels, update_position_ids
+from .aaa_update import update_input_embeds_ids_masks_labels, update_position_ids,update_ids_masks_labels
 from .a_forward import merge_to_flatten_idx, repatchify, flatten_to_merge_idx, recompose_windows
 
 
@@ -1933,8 +1933,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
                 # import pdb;pdb.set_trace()
                 image_embeds, token_itxy = self.get_image_features(pixel_values, image_grid_thw)
                 position_ids = update_position_ids(position_ids=position_ids, token_itxy=token_itxy, ids=input_ids, img_id=self.config.image_token_id)
-                inputs_embeds, input_ids, attention_mask, labels = update_input_embeds_ids_masks_labels(
-                    embeds=inputs_embeds,
+                input_ids, attention_mask, labels = update_ids_masks_labels(
                     ids=input_ids,
                     att_masks=attention_mask,
                     labels=labels,
