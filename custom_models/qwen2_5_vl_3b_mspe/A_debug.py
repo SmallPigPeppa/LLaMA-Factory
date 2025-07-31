@@ -2,7 +2,7 @@ from transformers import AutoImageProcessor
 import os
 
 # 1. 注册自定义 ImageProcessor
-from .A_image_processor import Qwen2VLImageProcessor
+from custom_models.qwen2_5_vl_3b_mspe.A_image_processor import Qwen2VLImageProcessor
 AutoImageProcessor.register("Qwen2VLImageProcessorMSPE", Qwen2VLImageProcessor)
 
 # 2. 检查注册是否成功（调试用）
