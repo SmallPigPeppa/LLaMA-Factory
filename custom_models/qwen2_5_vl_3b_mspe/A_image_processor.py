@@ -23,8 +23,6 @@ import math
 from typing import Dict, List, Optional, Union
 
 import numpy as np
-from transformers import Qwen2VLImageProcessor
-# from transformers.models.qwen2_vl import
 from transformers.image_processing_utils import BaseImageProcessor, BatchFeature
 from transformers.image_transforms import (
     convert_to_rgb,
