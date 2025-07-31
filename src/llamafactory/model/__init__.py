@@ -27,7 +27,3 @@ __all__ = [
     "load_valuehead_params",
 ]
 
-import pdb;pdb.set_trace()
-from transformers import AutoImageProcessor
-from custom_models.qwen2_5_vl_3b_mspe.A_image_processor import Qwen2VLImageProcessor
-AutoImageProcessor.register("Qwen2VLImageProcessorMSPE", Qwen2VLImageProcessor)
