@@ -759,27 +759,23 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             self.spatial_merge_size
         )
 
-        cu_seqlens = torch.repeat_interleave(grid_thw[:, 1] * grid_thw[:, 2], grid_thw[:, 0]).cumsum(
-            dim=0,
-            # Select dtype based on the following factors:
-            #  - FA2 requires that cu_seqlens_q must have dtype int32
-            #  - torch.onnx.export requires that cu_seqlens_q must have same dtype as grid_thw
-            # See https://github.com/huggingface/transformers/pull/34852 for more information
-            dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
-        )
-        cu_seqlens = F.pad(cu_seqlens, (1, 0), value=0)
 
         # update cu seq lens
-        _, cu_o = self.get_window_index(grid_thw, patch_size=self.patch_size)
-        cu_o = torch.tensor(
-            cu_o,
+        cu_tmp = torch.repeat_interleave(grid_thw[:, 1] * grid_thw[:, 2], grid_thw[:, 0]).cumsum(
+            dim=0,
+            dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
+        )
+        cu_tmp = F.pad(cu_tmp, (1, 0), value=0)
+        _, cu_win_tmp = self.get_window_index(grid_thw, patch_size=self.patch_size)
+        cu_win_tmp = torch.tensor(
+            cu_win_tmp,
             device=hidden_states.device,
             dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
         )
-        cu_o = torch.unique_consecutive(cu_o)
-        cu_ps_list = cu_o.tolist()
-        updated_cu_seqlens = [cu_window_seqlens[cu_ps_list.index(seq)] for seq in cu_seqlens]
-        updated_cu_seqlens = torch.tensor(updated_cu_seqlens, device=cu_seqlens.device, dtype=cu_seqlens.dtype)
+        cu_win_tmp = torch.unique_consecutive(cu_win_tmp)
+        cu_win_tmp = cu_win_tmp.tolist()
+        updated_cu_seqlens = [cu_window_seqlens[cu_win_tmp.index(seq)] for seq in cu_tmp]
+        updated_cu_seqlens = torch.tensor(updated_cu_seqlens, device=cu_tmp.device, dtype=cu_tmp.dtype)
 
         # import pdb;pdb.set_trace()
 
@@ -1945,6 +1941,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
                     img_id=self.config.image_token_id,
                     num_image_token=[len(i) for i in token_itxy]
                 )
+                inputs_embeds = self.get_input_embeddings()(input_ids)
                 # inputs_embeds = self.get_input_embeddings()(input_ids)
                 # other params: past_key_values, use_cache, cache_position is None
                 if any(x is not None for x in [past_key_values, use_cache, cache_position]):

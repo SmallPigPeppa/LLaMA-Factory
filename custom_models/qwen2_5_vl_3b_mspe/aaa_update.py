@@ -1,5 +1,77 @@
 import torch
 from typing import List
+def update_ids_masks_labels(
+        ids: torch.Tensor,         # (B, N)
+        att_masks: torch.Tensor,   # (B, N)
+        labels: torch.Tensor,      # (B, N)
+        num_image_token: list,     # (B)
+        img_id: int,
+):
+    """
+    对每个batch，img_id那段token根据num_image_token长度延展/截断，再整体pad到最大长度。
+    返回：
+        new_ids:      (B, N_new)
+        new_att_mask: (B, N_new)
+        new_labels:   (B, N_new)
+    """
+    B, N = ids.shape
+    out_ids, out_att, out_labels = [], [], []
+
+    new_lengths = []
+    for i in range(B):
+        t_row = ids[i]
+        m_row = att_masks[i]
+        l_row = labels[i]
+
+        # 找到img_id区块
+        mask = (t_row == img_id)
+        idx = mask.nonzero(as_tuple=True)[0]
+        s, e_ix = idx[0].item(), idx[-1].item() + 1
+        old_count = e_ix - s
+        new_count = num_image_token[i]
+
+        # 分三段：左边、img_id区块、右边
+        left_ids, block_ids, right_ids = t_row[:s], t_row[s:e_ix], t_row[e_ix:]
+        left_att, block_att, right_att = m_row[:s], m_row[s:e_ix], m_row[e_ix:]
+        left_lbl, block_lbl, right_lbl = l_row[:s], l_row[s:e_ix], l_row[e_ix:]
+
+        # 延展/截断
+        if new_count > old_count:
+            ext = new_count - old_count
+            block_ids = torch.cat([block_ids, block_ids[-1:].expand(ext)], dim=0)
+            block_att = torch.cat([block_att, block_att[-1:].expand(ext)], dim=0)
+            block_lbl = torch.cat([block_lbl, block_lbl[-1:].expand(ext)], dim=0)
+        elif new_count < old_count:
+            block_ids = block_ids[:new_count]
+            block_att = block_att[:new_count]
+            block_lbl = block_lbl[:new_count]
+        # else new_count == old_count, 无需变化
+
+        # 拼接整行
+        new_ids_ = torch.cat([left_ids, block_ids, right_ids], dim=0)
+        new_att_ = torch.cat([left_att, block_att, right_att], dim=0)
+        new_lbl_ = torch.cat([left_lbl, block_lbl, right_lbl], dim=0)
+        new_lengths.append(new_ids_.shape[0])
+
+        out_ids.append(new_ids_)
+        out_att.append(new_att_)
+        out_labels.append(new_lbl_)
+
+    # 对齐到最大长度（右pad，补最后一个token）
+    max_len = max(new_lengths)
+    for i in range(B):
+        pad_len = max_len - out_ids[i].shape[0]
+        if pad_len > 0:
+            out_ids[i] = torch.cat([out_ids[i], out_ids[i][-1:].expand(pad_len)], dim=0)
+            out_att[i] = torch.cat([out_att[i], out_att[i][-1:].expand(pad_len)], dim=0)
+            out_labels[i] = torch.cat([out_labels[i], out_labels[i][-1:].expand(pad_len)], dim=0)
+
+    # 堆叠
+    new_ids = torch.stack(out_ids, dim=0)
+    new_att_mask = torch.stack(out_att, dim=0)
+    new_labels = torch.stack(out_labels, dim=0)
+    return new_ids, new_att_mask, new_labels
+
 
 def update_input_embeds_ids_masks_labels(
         embeds: torch.Tensor,  # (B, N, C)
