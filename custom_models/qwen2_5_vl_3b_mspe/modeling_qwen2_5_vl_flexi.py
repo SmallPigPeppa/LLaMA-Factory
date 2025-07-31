@@ -773,16 +773,15 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         )
         cu_win_tmp = torch.unique_consecutive(cu_win_tmp)
         cu_win_tmp = cu_win_tmp.tolist()
-        updated_cu_seqlens = [cu_window_seqlens[cu_win_tmp.index(seq)] for seq in cu_tmp]
-        updated_cu_seqlens = torch.tensor(updated_cu_seqlens, device=cu_tmp.device, dtype=cu_tmp.dtype)
+        cu_seqlens = [cu_window_seqlens[cu_win_tmp.index(seq)] for seq in cu_tmp]
+        cu_seqlens = torch.tensor(cu_seqlens, device=cu_tmp.device, dtype=cu_tmp.dtype)
 
         # import pdb;pdb.set_trace()
 
         # window attention
         for layer_num, blk in enumerate(self.blocks):
             if layer_num in self.fullatt_block_indexes:
-                # cu_seqlens_now = cu_seqlens update
-                cu_seqlens_now = updated_cu_seqlens
+                cu_seqlens_now = cu_seqlens
             else:
                 cu_seqlens_now = cu_window_seqlens
             if self.gradient_checkpointing and self.training:
