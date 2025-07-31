@@ -31,3 +31,8 @@ else:
     sys.modules[__name__] = _LazyModule(__name__, _file, define_import_structure(_file), module_spec=__spec__)
 
 
+from transformers import AutoImageProcessor
+from custom_models.qwen2_5_vl_3b_mspe.A_image_processor import Qwen2VLImageProcessorMSPE
+from custom_models.qwen2_5_vl_3b_mspe.configuration_qwen2_5_vl import Qwen2_5_VLVisionConfig
+AutoImageProcessor.register(config_class=Qwen2_5_VLVisionConfig, image_processor_class=Qwen2VLImageProcessorMSPE)
+
