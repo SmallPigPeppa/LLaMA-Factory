@@ -696,6 +696,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         # patch_sizes = [28]
         # patch_sizes = [14]
         # patch_sizes = [7]
+        patch_sizes = [7, 14]
         grid_thw_ps = {}
         hidden_states_ps = {}
         rotary_pos_emb_ps = {}
