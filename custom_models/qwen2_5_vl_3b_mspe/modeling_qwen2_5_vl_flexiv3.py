@@ -58,9 +58,7 @@ if is_torch_flex_attn_available():
 logger = logging.get_logger(__name__)
 
 import random
-import numpy as np
-from .aaa_update import update_position_ids,update_ids_masks_labels
-from .a_forward import merge_to_flatten_idx, repatchify, flatten_to_merge_idx, recompose_windows
+from .A_utils import update_position_ids, update_ids_masks_labels, merge_to_flatten_idx, repatchify, flatten_to_merge_idx, recompose_windows
 
 
 class Qwen2_5_VLMLP(nn.Module):
