@@ -18,6 +18,21 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     # pick indices and sample IDs
     idx = window_index_ps[ps][start:end].type_as(cu)
     # import pdb;pdb.set_trace()
+    '''
+    False: boundaries[i-1] < input[m][n]...[l][x] <= boundaries[i]
+    True: boundaries[i-1] <= input[m][n]...[l][x] < boundaries[i]
+    compare with idx and cu, using True
+    e.g. 
+    window_index_ps[28]
+    tensor([ 0,  1,  7,  8,  2,  3,  9, 10,  4,  5, 11, 12,  6, 13, 14, 15, 21, 22,
+        16, 17, 23, 24, 18, 19, 25, 26, 20, 27, 28, 29, 35, 36, 30, 31, 37, 38,
+        32, 33, 39, 40, 34, 41, 42, 43, 49, 50, 44, 45, 51, 52, 46, 47, 53, 54,
+        48, 55, 56, 57, 63, 64, 58, 59, 65, 66, 60, 61, 67, 68, 62, 69, 70, 71,
+        72, 73, 74, 75, 76])
+    cu_window_seqlens_ps[28]
+    tensor([  0,  16,  32,  48,  56,  72,  88, 104, 112, 128, 144, 160, 168, 184,
+            200, 216, 224, 240, 256, 272, 280, 288, 296, 304, 308]
+    '''
     I = torch.bucketize(idx[0], cu[1:], right=True)
 
     local = idx - cu[I]
@@ -64,7 +79,7 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
             position_embeddings_ps[ps][1][start:end]
         ))
         # unified to min patchsize
-        new_idx, token_itxy = scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end,spatial_merge_unit, spatial_merge_size)
+        new_idx, token_itxy = scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end, spatial_merge_unit, spatial_merge_size)
         window_index_list.append(new_idx)
         token_itxy_list.append(token_itxy)
 
@@ -75,7 +90,7 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
     hidden_states = torch.cat(hidden_states_list, dim=0)
     position_embeddings_cos = torch.cat([emb[0] for emb in position_embeddings_list], dim=0)
     position_embeddings_sin = torch.cat([emb[1] for emb in position_embeddings_list], dim=0)
-    import pdb;pdb.set_trace()
+    # import pdb;pdb.set_trace()
     window_index = torch.cat(window_index_list, dim=0)
     cu_window_seqlens = torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype,device=cu_window_seqlens[-1].device)
     position_embeddings = (position_embeddings_cos, position_embeddings_sin)

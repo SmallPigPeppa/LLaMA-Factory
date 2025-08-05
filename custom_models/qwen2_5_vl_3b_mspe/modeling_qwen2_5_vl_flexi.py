@@ -742,7 +742,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             emb = torch.cat((rotary_pos_emb_ps[ps], rotary_pos_emb_ps[ps]), dim=-1)
             position_embeddings_ps[ps] = (emb.cos(), emb.sin())
 
-        # import pdb;pdb.set_trace()
+        import pdb;pdb.set_trace()
         # window patchsize
         window_adp_ps = random_sample_ps(cu_window_seqlens_ps,patch_sizes,grid_thw_ps)
         # window_adp_ps = random_window_ps(cu_window_seqlens_ps, patch_sizes)

@@ -42,7 +42,15 @@ def random_sample_ps(
     cu_seqlens = torch.repeat_interleave(grid_thw[:, 1] * grid_thw[:, 2], grid_thw[:, 0]).cumsum(0)
     cu_seqlens = F.pad(cu_seqlens, (1, 0), value=0)
 
-
+    '''
+    False: boundaries[i-1] < input[m][n]...[l][x] <= boundaries[i]
+    True: boundaries[i-1] <= input[m][n]...[l][x] < boundaries[i]
+    compare with window_cu and cu, using False
+    e.g. 
+    cu_window_seqlens_ps[28]
+    tensor([  0,  16,  32,  48,  56,  72,  88, 104, 112, 128, 144, 160, 168, 184,
+            200, 216, 224, 240, 256, 272, 280, 288, 296, 304, 308]
+    '''
     interval_ids = torch.bucketize(cu_window_seqlens[1:], cu_seqlens[1:], right=False)
 
     choices = torch.tensor(
