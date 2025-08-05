@@ -42,12 +42,12 @@ def random_sample_ps(
     cu_seqlens = torch.repeat_interleave(grid_thw[:, 1] * grid_thw[:, 2], grid_thw[:, 0]).cumsum(0)
     cu_seqlens = F.pad(cu_seqlens, (1, 0), value=0)
 
-    window_starts = cu_window_seqlens[:-1]
-    interval_ids = torch.bucketize(window_starts, cu_seqlens)
+
+    interval_ids = torch.bucketize(cu_window_seqlens[1:], cu_seqlens[1:], right=True)
 
     choices = torch.tensor(
         [random.choice(patch_sizes) for _ in range(cu_seqlens.numel() - 1)],
-        device=window_starts.device
+        device=cu_window_seqlens.device
     )
     import pdb;pdb.set_trace()
 
