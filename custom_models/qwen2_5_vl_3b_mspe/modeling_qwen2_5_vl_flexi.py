@@ -59,6 +59,7 @@ logger = logging.get_logger(__name__)
 
 import random
 from .A_utils import update_position_ids, update_ids_masks_labels, merge_to_flatten_idx, repatchify, flatten_to_merge_idx, recompose_windows
+from .A_adptive import random_sample_ps,random_window_ps
 
 
 class Qwen2_5_VLMLP(nn.Module):
@@ -747,7 +748,11 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         # import pdb;pdb.set_trace()
         # window patchsize
-        window_adp_ps = [random.choice(patch_sizes) for _ in range(len(cu_window_seqlens_ps[patch_sizes[0]]) - 1)]
+        window_adp_ps = random_sample_ps(cu_window_seqlens_ps,patch_sizes,grid_thw_ps)
+        # window_adp_ps = random_window_ps(cu_window_seqlens_ps, patch_sizes)
+
+        print('window_adp_ps:',window_adp_ps)
+
         hidden_states, position_embeddings, window_index, cu_window_seqlens, token_itxy = recompose_windows(
             window_adp_ps,
             hidden_states_ps,
