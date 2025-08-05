@@ -49,4 +49,6 @@ def random_sample_ps(
         [random.choice(patch_sizes) for _ in range(cu_seqlens.numel() - 1)],
         device=window_starts.device
     )
+    import pdb;pdb.set_trace()
+
     return choices[interval_ids].tolist()
