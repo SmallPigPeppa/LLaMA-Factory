@@ -17,8 +17,9 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
 
     # pick indices and sample IDs
     idx = window_index_ps[ps][start:end].type_as(cu)
-    # import pdb;pdb.set_trace()
+    import pdb;pdb.set_trace()
     I = torch.bucketize(idx[0], cu[1:], right=True)
+
     local = idx - cu[I]
 
     # unravel to (t,h,w)

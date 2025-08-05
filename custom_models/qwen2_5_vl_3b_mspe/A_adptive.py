@@ -43,7 +43,7 @@ def random_sample_ps(
     cu_seqlens = F.pad(cu_seqlens, (1, 0), value=0)
 
 
-    interval_ids = torch.bucketize(cu_window_seqlens[1:], cu_seqlens[1:], right=True)
+    interval_ids = torch.bucketize(cu_window_seqlens[1:], cu_seqlens[1:], right=False)
 
     choices = torch.tensor(
         [random.choice(patch_sizes) for _ in range(cu_seqlens.numel() - 1)],
