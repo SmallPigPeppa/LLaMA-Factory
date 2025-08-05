@@ -1,9 +1,9 @@
 from huggingface_hub import snapshot_download
 
 snapshot_download(
-    repo_id="lmms-lab/LLaVA-NeXT-Data",
-    repo_type="dataset",
-    cache_dir="/mnt/bn/liuwenzhuo-hl-data/hf_cache",
-    max_workers=64,              # 线程数可调
+    repo_id="Qwen/Qwen2.5-VL-3B-Instruct",
+    repo_type="model",
+    local_dir="/mnt/bn/liuwenzhuo-hl-data/Qwen/Qwen2.5-VL-3B-Instruct",
+    max_workers=32,
     resume_download=True,
 )
