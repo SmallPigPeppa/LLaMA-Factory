@@ -9,7 +9,7 @@ trust_remote_code: true
 stage: sft
 do_train: true
 finetuning_type: full
-freeze_vision_tower: true
+freeze_vision_tower: false
 freeze_multi_modal_projector: true
 freeze_language_model: false
 deepspeed: examples/deepspeed/ds_z3_config.json
