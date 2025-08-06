@@ -431,7 +431,7 @@
     "formatting": "sharegpt",
     "columns": {
       "messages": "conversations",
-      "image": "image"
+      "images": "image"
     }
   },
   "pokemon_cap": {
