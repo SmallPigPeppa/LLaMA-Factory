@@ -20,7 +20,6 @@ dataset: llava_779k
 #llava_779k, llava_150k_en
 template: qwen2_vl
 cutoff_len: 8192
-#cutoff_len: 2048
 #max_samples: 1000
 overwrite_cache: true
 preprocessing_num_workers: 16
@@ -29,7 +28,7 @@ dataloader_num_workers: 4
 ### output
 output_dir: saves/qwen2_5vl-3b/full/sft
 logging_steps: 10
-save_steps: 500
+save_steps: 5000
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
@@ -39,11 +38,11 @@ run_name: qwen2.5-vl-3b
 
 ### train
 per_device_train_batch_size: 2
-gradient_accumulation_steps: 2
-learning_rate: 1.0e-5
+gradient_accumulation_steps: 8 # 128/8/2
+learning_rate: 2e-5
 num_train_epochs: 1.0
 lr_scheduler_type: cosine
-warmup_ratio: 0.1
+warmup_ratio: 0.03
 bf16: true
 ddp_timeout: 180000000
 resume_from_checkpoint: null
