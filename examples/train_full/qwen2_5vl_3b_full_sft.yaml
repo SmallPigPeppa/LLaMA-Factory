@@ -20,7 +20,7 @@ dataset: llava_779k
 #llava_779k, llava_150k_en
 template: qwen2_vl
 cutoff_len: 2048
-max_samples: 600000
+#max_samples: 600000
 overwrite_cache: true
 preprocessing_num_workers: 128
 dataloader_num_workers: 16
