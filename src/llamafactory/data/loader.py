@@ -126,8 +126,8 @@ def _load_single_dataset(
     elif dataset_attr.load_from == "cloud_file":
         dataset = Dataset.from_list(read_cloud_json(data_path), split=dataset_attr.split)
     else:
-        num_proc = None if (
-                    data_args.streaming and dataset_attr.load_from != "file") else data_args.preprocessing_num_workers
+        # num_proc = None if (
+        #             data_args.streaming and dataset_attr.load_from != "file") else data_args.preprocessing_num_workers
         dataset = load_dataset(
             path=data_path,
             name=data_name,
