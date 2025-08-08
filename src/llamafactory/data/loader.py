@@ -168,8 +168,8 @@ def _load_single_dataset(
         max_samples = min(data_args.max_samples, len(dataset))
         dataset = dataset.select(range(max_samples))
 
-    # return align_dataset(dataset, dataset_attr, data_args, training_args)
-    return dataset
+    return align_dataset(dataset, dataset_attr, data_args, training_args)
+    # return dataset
 
 
 def _get_merged_dataset(
