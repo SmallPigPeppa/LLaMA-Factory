@@ -129,29 +129,29 @@ def _load_single_dataset(
         num_proc = None if (
                 data_args.streaming and dataset_attr.load_from != "file") else data_args.preprocessing_num_workers
         # import pdb;pdb.set_trace()
-        # dataset = load_dataset(
-        #     path=data_path,
-        #     name=data_name,
-        #     data_dir=data_dir,
-        #     data_files=data_files,
-        #     split=dataset_attr.split,
-        #     cache_dir=model_args.cache_dir,
-        #     token=model_args.hf_hub_token,
-        #     # num_proc=data_args.preprocessing_num_workers,
-        #     num_proc=num_proc,
-        #     trust_remote_code=model_args.trust_remote_code,
-        #     streaming=data_args.streaming and dataset_attr.load_from != "file",
-        # )
         dataset = load_dataset(
-            "parquet",
-            # data_files="/mnt/bn/liuwenzhuo-hl-data/779k/data_renamed/*.parquet",
-            data_files="/mnt/bn/liuwenzhuo-hl-data/hf_cache/hub/datasets--lmms-lab--LLaVA-NeXT-Data/snapshots/c8aef391ce214167c4ebc7f06bc05a50dee2e75f/data/*.parquet",
-            split="train",
-            # num_proc=128,
-            num_proc=None,
-            streaming=True
-            # streaming=data_args.streaming and dataset_attr.load_from != "file"
+            path=data_path,
+            name=data_name,
+            data_dir=data_dir,
+            data_files=data_files,
+            split=dataset_attr.split,
+            cache_dir=model_args.cache_dir,
+            token=model_args.hf_hub_token,
+            # num_proc=data_args.preprocessing_num_workers,
+            num_proc=num_proc,
+            trust_remote_code=model_args.trust_remote_code,
+            streaming=data_args.streaming and dataset_attr.load_from != "file",
         )
+        # dataset = load_dataset(
+        #     "parquet",
+        #     # data_files="/mnt/bn/liuwenzhuo-hl-data/779k/data_renamed/*.parquet",
+        #     data_files="/mnt/bn/liuwenzhuo-hl-data/hf_cache/hub/datasets--lmms-lab--LLaVA-NeXT-Data/snapshots/c8aef391ce214167c4ebc7f06bc05a50dee2e75f/data/*.parquet",
+        #     split="train",
+        #     # num_proc=128,
+        #     num_proc=None,
+        #     streaming=True
+        #     # streaming=data_args.streaming and dataset_attr.load_from != "file"
+        # )
         if data_args.streaming and dataset_attr.load_from == "file":
             dataset = dataset.to_iterable_dataset(num_shards=training_args.dataloader_num_workers)
 
