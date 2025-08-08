@@ -33,7 +33,6 @@ from .processor import (
     UnsupervisedDatasetProcessor,
 )
 
-
 if TYPE_CHECKING:
     from datasets import Dataset, IterableDataset
     from transformers import PreTrainedTokenizer, ProcessorMixin, Seq2SeqTrainingArguments
@@ -44,15 +43,14 @@ if TYPE_CHECKING:
     from .processor import DatasetProcessor
     from .template import Template
 
-
 logger = logging.get_logger(__name__)
 
 
 def _load_single_dataset(
-    dataset_attr: "DatasetAttr",
-    model_args: "ModelArguments",
-    data_args: "DataArguments",
-    training_args: "Seq2SeqTrainingArguments",
+        dataset_attr: "DatasetAttr",
+        model_args: "ModelArguments",
+        data_args: "DataArguments",
+        training_args: "Seq2SeqTrainingArguments",
 ) -> Union["Dataset", "IterableDataset"]:
     r"""Load a single dataset and aligns it to the standard format."""
     logger.info_rank0(f"Loading dataset {dataset_attr}...")
@@ -166,12 +164,12 @@ def _load_single_dataset(
 
 
 def _get_merged_dataset(
-    dataset_names: Optional[list[str]],
-    model_args: "ModelArguments",
-    data_args: "DataArguments",
-    training_args: "Seq2SeqTrainingArguments",
-    stage: Literal["pt", "sft", "rm", "ppo", "kto"],
-    return_dict: bool = False,
+        dataset_names: Optional[list[str]],
+        model_args: "ModelArguments",
+        data_args: "DataArguments",
+        training_args: "Seq2SeqTrainingArguments",
+        stage: Literal["pt", "sft", "rm", "ppo", "kto"],
+        return_dict: bool = False,
 ) -> Optional[Union["Dataset", "IterableDataset", dict[str, "Dataset"]]]:
     r"""Return the merged datasets in the standard format."""
     if dataset_names is None:
@@ -191,12 +189,12 @@ def _get_merged_dataset(
 
 
 def _get_dataset_processor(
-    data_args: "DataArguments",
-    stage: Literal["pt", "sft", "rm", "ppo", "kto"],
-    template: "Template",
-    tokenizer: "PreTrainedTokenizer",
-    processor: Optional["ProcessorMixin"],
-    do_generate: bool = False,
+        data_args: "DataArguments",
+        stage: Literal["pt", "sft", "rm", "ppo", "kto"],
+        template: "Template",
+        tokenizer: "PreTrainedTokenizer",
+        processor: Optional["ProcessorMixin"],
+        do_generate: bool = False,
 ) -> "DatasetProcessor":
     r"""Return the corresponding dataset processor."""
     if stage == "pt":
@@ -231,14 +229,14 @@ def _get_dataset_processor(
 
 
 def _get_preprocessed_dataset(
-    dataset: Optional[Union["Dataset", "IterableDataset"]],
-    data_args: "DataArguments",
-    training_args: "Seq2SeqTrainingArguments",
-    stage: Literal["pt", "sft", "rm", "ppo", "kto"],
-    template: "Template",
-    tokenizer: "PreTrainedTokenizer",
-    processor: Optional["ProcessorMixin"] = None,
-    is_eval: bool = False,
+        dataset: Optional[Union["Dataset", "IterableDataset"]],
+        data_args: "DataArguments",
+        training_args: "Seq2SeqTrainingArguments",
+        stage: Literal["pt", "sft", "rm", "ppo", "kto"],
+        template: "Template",
+        tokenizer: "PreTrainedTokenizer",
+        processor: Optional["ProcessorMixin"] = None,
+        is_eval: bool = False,
 ) -> Optional[Union["Dataset", "IterableDataset"]]:
     r"""Preprocesses the dataset, including format checking and tokenization."""
     if dataset is None:
@@ -278,13 +276,13 @@ def _get_preprocessed_dataset(
 
 
 def get_dataset(
-    template: "Template",
-    model_args: "ModelArguments",
-    data_args: "DataArguments",
-    training_args: "Seq2SeqTrainingArguments",
-    stage: Literal["pt", "sft", "rm", "ppo", "kto"],
-    tokenizer: "PreTrainedTokenizer",
-    processor: Optional["ProcessorMixin"] = None,
+        template: "Template",
+        model_args: "ModelArguments",
+        data_args: "DataArguments",
+        training_args: "Seq2SeqTrainingArguments",
+        stage: Literal["pt", "sft", "rm", "ppo", "kto"],
+        tokenizer: "PreTrainedTokenizer",
+        processor: Optional["ProcessorMixin"] = None,
 ) -> "DatasetModule":
     r"""Get the train dataset and optionally gets the evaluation dataset."""
     # Load tokenized dataset if path exists
