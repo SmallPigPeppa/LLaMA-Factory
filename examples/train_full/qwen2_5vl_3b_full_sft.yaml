@@ -28,6 +28,12 @@ dataloader_num_workers: 16
 ## 779289/128
 #max_steps: 6088
 
+buffer_size: 128
+preprocessing_batch_size: 128
+streaming: true
+accelerator_config:
+  dispatch_batches: false
+
 ### output
 output_dir: saves/qwen2_5vl-3b/full/sft
 logging_steps: 10
