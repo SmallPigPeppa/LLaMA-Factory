@@ -244,7 +244,6 @@ def update_position_ids(position_ids, token_itxy, ids, img_id):
 
     for b in range(batch_size):
         pos_ids = position_ids[:, b, :]  # [3, max_len]
-        import pdb; pdb.set_trace()
         grid_txy = token_itxy[b]  # [n_img_token, 3]
         n_img_token = grid_txy.shape[0]
 
