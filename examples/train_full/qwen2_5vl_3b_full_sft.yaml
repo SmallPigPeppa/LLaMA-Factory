@@ -31,7 +31,7 @@ max_steps: 6086
 ### output
 output_dir: saves/qwen2_5vl-3b/full/sft
 logging_steps: 10
-save_steps: 5000
+save_steps: 2500
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
