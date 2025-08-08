@@ -146,7 +146,8 @@ def _load_single_dataset(
             "parquet",
             data_files="/mnt/bn/liuwenzhuo-hl-data/hf_cache/hub/datasets--lmms-lab--LLaVA-NeXT-Data/snapshots/c8aef391ce214167c4ebc7f06bc05a50dee2e75f/data/*.parquet",
             split="train",
-            streaming=data_args.streaming and dataset_attr.load_from != "file"
+            num_proc=32
+            # streaming=data_args.streaming and dataset_attr.load_from != "file"
         )
         if data_args.streaming and dataset_attr.load_from == "file":
             dataset = dataset.to_iterable_dataset(num_shards=training_args.dataloader_num_workers)
