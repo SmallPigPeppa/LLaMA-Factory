@@ -128,6 +128,8 @@ def _load_single_dataset(
     elif dataset_attr.load_from == "cloud_file":
         dataset = Dataset.from_list(read_cloud_json(data_path), split=dataset_attr.split)
     else:
+        num_proc = None if (
+                    data_args.streaming and dataset_attr.load_from != "file") else data_args.preprocessing_num_workers
         dataset = load_dataset(
             path=data_path,
             name=data_name,
@@ -136,7 +138,8 @@ def _load_single_dataset(
             split=dataset_attr.split,
             cache_dir=model_args.cache_dir,
             token=model_args.hf_hub_token,
-            num_proc=data_args.preprocessing_num_workers,
+            # num_proc=data_args.preprocessing_num_workers,
+            num_proc=num_proc,
             trust_remote_code=model_args.trust_remote_code,
             streaming=data_args.streaming and dataset_attr.load_from != "file",
         )
