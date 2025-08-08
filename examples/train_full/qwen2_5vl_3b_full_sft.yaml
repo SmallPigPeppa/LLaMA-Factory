@@ -26,7 +26,7 @@ preprocessing_num_workers: 256
 dataloader_num_workers: 16
 #streaming: true
 ## 779289/128
-#max_steps: 6088
+max_steps: 6088
 
 buffer_size: 128
 preprocessing_batch_size: 128
