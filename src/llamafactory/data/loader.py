@@ -144,9 +144,11 @@ def _load_single_dataset(
         # )
         dataset = load_dataset(
             "parquet",
-            data_files="/mnt/bn/liuwenzhuo-hl-data/779k/data_renamed/*.parquet",
+            # data_files="/mnt/bn/liuwenzhuo-hl-data/779k/data_renamed/*.parquet",
+            data_files="/mnt/bn/liuwenzhuo-hl-data/hf_cache/hub/datasets--lmms-lab--LLaVA-NeXT-Data/snapshots/c8aef391ce214167c4ebc7f06bc05a50dee2e75f/data/*.parquet",
             split="train",
-            num_proc=128
+            # num_proc=128
+            streaming=True
             # streaming=data_args.streaming and dataset_attr.load_from != "file"
         )
         if data_args.streaming and dataset_attr.load_from == "file":
