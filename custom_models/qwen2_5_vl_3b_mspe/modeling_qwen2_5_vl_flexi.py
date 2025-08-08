@@ -1934,6 +1934,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             if pixel_values is not None:
                 # import pdb;pdb.set_trace()
                 image_embeds, token_itxy = self.get_image_features(pixel_values, image_grid_thw)
+                import pdb;pdb.set_trace()
                 position_ids = update_position_ids(position_ids=position_ids, token_itxy=token_itxy, ids=input_ids, img_id=self.config.image_token_id)
                 input_ids, attention_mask, labels = update_ids_masks_labels(
                     ids=input_ids,
