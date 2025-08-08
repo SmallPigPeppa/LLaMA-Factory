@@ -136,8 +136,8 @@ def _load_single_dataset(
             split=dataset_attr.split,
             cache_dir=model_args.cache_dir,
             token=model_args.hf_hub_token,
-            # num_proc=data_args.preprocessing_num_workers,
-            num_proc=num_proc,
+            num_proc=data_args.preprocessing_num_workers,
+            # num_proc=num_proc,
             trust_remote_code=model_args.trust_remote_code,
             streaming=data_args.streaming and dataset_attr.load_from != "file",
         )
