@@ -54,7 +54,8 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     return scale_idx, token_itxy
 
 
-def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,grid_thw_ps,
+def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,
+                      grid_thw_ps,
                       spatial_merge_unit, spatial_merge_size):
     hidden_states_list = []
     position_embeddings_list = []
@@ -79,7 +80,8 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
             position_embeddings_ps[ps][1][start:end]
         ))
         # unified to min patchsize
-        new_idx, token_itxy = scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end, spatial_merge_unit, spatial_merge_size)
+        new_idx, token_itxy = scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end,
+                                                 spatial_merge_unit, spatial_merge_size)
         window_index_list.append(new_idx)
         token_itxy_list.append(token_itxy)
 
@@ -92,7 +94,8 @@ def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, w
     position_embeddings_sin = torch.cat([emb[1] for emb in position_embeddings_list], dim=0)
     # import pdb;pdb.set_trace()
     window_index = torch.cat(window_index_list, dim=0)
-    cu_window_seqlens = torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype,device=cu_window_seqlens[-1].device)
+    cu_window_seqlens = torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype,
+                                     device=cu_window_seqlens[-1].device)
     position_embeddings = (position_embeddings_cos, position_embeddings_sin)
 
     # for token itxy
@@ -230,10 +233,10 @@ def merge_to_flatten_idx(grid_thw: torch.Tensor, merge_size: int) -> torch.Tenso
 
 
 def update_ids_masks_labels(
-        ids: torch.Tensor,         # (B, N)
-        att_masks: torch.Tensor,   # (B, N)
-        labels: torch.Tensor,      # (B, N)
-        num_image_token: list,     # (B)
+        ids: torch.Tensor,  # (B, N)
+        att_masks: torch.Tensor,  # (B, N)
+        labels: torch.Tensor,  # (B, N)
+        num_image_token: list,  # (B)
         img_id: int,
 ):
     """
@@ -245,6 +248,7 @@ def update_ids_masks_labels(
     """
     B, N = ids.shape
     out_ids, out_att, out_labels = [], [], []
+    has_image = (ids == img_id).any(dim=1)
 
     new_lengths = []
     for i in range(B):
@@ -308,13 +312,20 @@ def update_position_ids(position_ids, token_itxy, ids, img_id):
     grid_txy_list: list of torch.Tensor, 每个样本grid_txy: [n_img_token, 3]
     返回新的position_ids
     """
+    has_image = (ids == img_id).any(dim=1)
+    position_ids = position_ids[:,has_image,:]
     dim, batch_size, max_len = position_ids.shape
     pos_list = []
     max_len_new = 0
 
+    no_image_indices = (~has_image).nonzero(as_tuple=True)[0]
+    for idx in no_image_indices:
+        pos_list.append(position_ids[:, idx, :])  # [3, max_len]
+        max_len_new = max(max_len_new, position_ids.shape[2])
+
     for b in range(batch_size):
         pos_ids = position_ids[:, b, :]  # [3, max_len]
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         grid_txy = token_itxy[b]  # [n_img_token, 3]
         n_img_token = grid_txy.shape[0]
 
@@ -336,7 +347,7 @@ def update_position_ids(position_ids, token_itxy, ids, img_id):
         Z_new = int(max(t_max, x_max, y_max)) + 1
 
         # 3. 前缀
-        left_pos, img_pos, right_pos =  pos_ids[:,:s],  pos_ids[:,s:e_ix],  pos_ids[:,e_ix:]
+        left_pos, img_pos, right_pos = pos_ids[:, :s], pos_ids[:, s:e_ix], pos_ids[:, e_ix:]
         # 4. 新的图像部分
         new_img_pos = torch.zeros((3, n_img_token), dtype=pos_ids.dtype, device=pos_ids.device)
         for i in range(n_img_token):
@@ -355,7 +366,6 @@ def update_position_ids(position_ids, token_itxy, ids, img_id):
         new_pos = torch.cat([left_pos, new_img_pos, text_ids], dim=1)  # [3, 新长度]
         pos_list.append(new_pos)
         max_len_new = max(max_len_new, new_pos.shape[1])
-
 
     # 7. 补pad（统一到 batch 内最大长度），每行repeat last col
     padded_pos = []
