@@ -144,7 +144,7 @@ def _load_single_dataset(
         # )
         dataset = load_dataset(
             "parquet",
-            data_files="/mnt/bn/liuwenzhuo-hl-data/hf_cache/hub/datasets--lmms-lab--LLaVA-NeXT-Data/snapshots/c8aef391ce214167c4ebc7f06bc05a50dee2e75f/data/*.parquet",
+            data_files="/mnt/bn/liuwenzhuo-hl-data/779k/data_renamed/*.parquet",
             split="train",
             num_proc=128
             # streaming=data_args.streaming and dataset_attr.load_from != "file"
@@ -168,7 +168,8 @@ def _load_single_dataset(
         max_samples = min(data_args.max_samples, len(dataset))
         dataset = dataset.select(range(max_samples))
 
-    return align_dataset(dataset, dataset_attr, data_args, training_args)
+    # return align_dataset(dataset, dataset_attr, data_args, training_args)
+    return dataset
 
 
 def _get_merged_dataset(
