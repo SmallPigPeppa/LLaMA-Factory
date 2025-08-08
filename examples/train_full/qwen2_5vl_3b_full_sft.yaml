@@ -24,9 +24,9 @@ cutoff_len: 8192
 overwrite_cache: true
 preprocessing_num_workers: None
 dataloader_num_workers: 4
-#streaming: true
-## 779289/128
-#max_steps: 6088
+streaming: true
+# 779289/128
+max_steps: 6088
 
 ### output
 output_dir: saves/qwen2_5vl-3b/full/sft
