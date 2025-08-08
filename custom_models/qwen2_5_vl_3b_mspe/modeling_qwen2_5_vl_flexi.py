@@ -58,7 +58,7 @@ if is_torch_flex_attn_available():
 logger = logging.get_logger(__name__)
 
 import random
-from .A_utils import update_position_ids, update_ids_masks_labels, merge_to_flatten_idx, repatchify, flatten_to_merge_idx, recompose_windows
+from .A_utilsv2 import update_position_ids, update_ids_masks_labels, merge_to_flatten_idx, repatchify, flatten_to_merge_idx, recompose_windows
 from .A_adptive import random_sample_ps,random_window_ps
 
 
@@ -802,7 +802,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         txy_all = token_itxy[:, 1:]  # [N, 3]
         unique_I = I_all.unique(sorted=True)
         token_itxy = [txy_all[I_all == I] for I in unique_I]
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
 
         # import pdb; pdb.set_trace()
         return hidden_states, token_itxy
@@ -1934,7 +1934,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             if pixel_values is not None:
                 # import pdb;pdb.set_trace()
                 image_embeds, token_itxy = self.get_image_features(pixel_values, image_grid_thw)
-                import pdb;pdb.set_trace()
+                # import pdb;pdb.set_trace()
                 position_ids = update_position_ids(position_ids=position_ids, token_itxy=token_itxy, ids=input_ids, img_id=self.config.image_token_id)
                 input_ids, attention_mask, labels = update_ids_masks_labels(
                     ids=input_ids,

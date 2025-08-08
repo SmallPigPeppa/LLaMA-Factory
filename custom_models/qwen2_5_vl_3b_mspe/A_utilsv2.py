@@ -233,76 +233,87 @@ def merge_to_flatten_idx(grid_thw: torch.Tensor, merge_size: int) -> torch.Tenso
 
 
 def update_ids_masks_labels(
-        ids: torch.Tensor,  # (B, N)
+        ids: torch.Tensor,        # (B, N)
         att_masks: torch.Tensor,  # (B, N)
-        labels: torch.Tensor,  # (B, N)
-        num_image_token: list,  # (B)
+        labels: torch.Tensor,     # (B, N)
+        num_image_token: list,    # 只对应“有图像”的样本，顺序与原batch一致
         img_id: int,
 ):
     """
-    对每个batch，img_id那段token根据num_image_token长度延展/截断，再整体pad到最大长度。
-    返回：
-        new_ids:      (B, N_new)
-        new_att_mask: (B, N_new)
-        new_labels:   (B, N_new)
+    有图像: 将 img_id 区块按 num_image_token[ni_idx] 延展/截断
+    无图像: 保持整行不变直接加入结果
+    最后对齐到 batch 内最大长度（右 pad，补最后一个 token）
     """
     B, N = ids.shape
     out_ids, out_att, out_labels = [], [], []
-
     new_lengths = []
+
+    ni_idx = 0  # 指向 num_image_token，仅在 has_image=True 的样本上递增
+
     for i in range(B):
         t_row = ids[i]
         m_row = att_masks[i]
         l_row = labels[i]
 
-        # 找到img_id区块
-        mask = (t_row == img_id)
-        idx = mask.nonzero(as_tuple=True)[0]
-        s, e_ix = idx[0].item(), idx[-1].item() + 1
-        old_count = e_ix - s
-        new_count = num_image_token[i]
+        has_image = (t_row == img_id).any()
 
-        # 分三段：左边、img_id区块、右边
-        left_ids, block_ids, right_ids = t_row[:s], t_row[s:e_ix], t_row[e_ix:]
-        left_att, block_att, right_att = m_row[:s], m_row[s:e_ix], m_row[e_ix:]
-        left_lbl, block_lbl, right_lbl = l_row[:s], l_row[s:e_ix], l_row[e_ix:]
+        if has_image:
+            # 找到 img_id 区块
+            mask = (t_row == img_id)
+            idx = mask.nonzero(as_tuple=True)[0]
+            s, e_ix = idx[0].item(), idx[-1].item() + 1
+            old_count = e_ix - s
+            new_count = int(num_image_token[ni_idx])
+            ni_idx += 1
 
-        # 延展/截断
-        if new_count > old_count:
-            ext = new_count - old_count
-            block_ids = torch.cat([block_ids, block_ids[-1:].expand(ext)], dim=0)
-            block_att = torch.cat([block_att, block_att[-1:].expand(ext)], dim=0)
-            block_lbl = torch.cat([block_lbl, block_lbl[-1:].expand(ext)], dim=0)
-        elif new_count < old_count:
-            block_ids = block_ids[:new_count]
-            block_att = block_att[:new_count]
-            block_lbl = block_lbl[:new_count]
-        # else new_count == old_count, 无需变化
+            # 三段拆分
+            left_ids,  block_ids,  right_ids  = t_row[:s], t_row[s:e_ix], t_row[e_ix:]
+            left_att,  block_att,  right_att  = m_row[:s], m_row[s:e_ix], m_row[e_ix:]
+            left_lbl,  block_lbl,  right_lbl  = l_row[:s], l_row[s:e_ix], l_row[e_ix:]
 
-        # 拼接整行
-        new_ids_ = torch.cat([left_ids, block_ids, right_ids], dim=0)
-        new_att_ = torch.cat([left_att, block_att, right_att], dim=0)
-        new_lbl_ = torch.cat([left_lbl, block_lbl, right_lbl], dim=0)
+            # 延展/截断
+            if new_count > old_count:
+                ext = new_count - old_count
+                block_ids = torch.cat([block_ids,  block_ids[-1:].expand(ext)], dim=0)
+                block_att = torch.cat([block_att,  block_att[-1:].expand(ext)], dim=0)
+                block_lbl = torch.cat([block_lbl,  block_lbl[-1:].expand(ext)], dim=0)
+            elif new_count < old_count:
+                block_ids = block_ids[:new_count]
+                block_att = block_att[:new_count]
+                block_lbl = block_lbl[:new_count]
+            # else: 等长，无需变化
+
+            # 重新拼接
+            new_ids_ = torch.cat([left_ids, block_ids, right_ids], dim=0)
+            new_att_ = torch.cat([left_att, block_att, right_att], dim=0)
+            new_lbl_ = torch.cat([left_lbl, block_lbl, right_lbl], dim=0)
+
+        else:
+            # 无图像 → 原样加入结果（不消耗 num_image_token）
+            new_ids_ = t_row
+            new_att_ = m_row
+            new_lbl_ = l_row
+
         new_lengths.append(new_ids_.shape[0])
-
         out_ids.append(new_ids_)
         out_att.append(new_att_)
         out_labels.append(new_lbl_)
 
-    # 对齐到最大长度（右pad，补最后一个token）
+    # 右侧 pad 到最大长度（用各自最后一个 token 填充）
     max_len = max(new_lengths)
     for i in range(B):
         pad_len = max_len - out_ids[i].shape[0]
         if pad_len > 0:
-            out_ids[i] = torch.cat([out_ids[i], out_ids[i][-1:].expand(pad_len)], dim=0)
-            out_att[i] = torch.cat([out_att[i], out_att[i][-1:].expand(pad_len)], dim=0)
+            out_ids[i]    = torch.cat([out_ids[i],    out_ids[i][-1:].expand(pad_len)], dim=0)
+            out_att[i]    = torch.cat([out_att[i],    out_att[i][-1:].expand(pad_len)], dim=0)
             out_labels[i] = torch.cat([out_labels[i], out_labels[i][-1:].expand(pad_len)], dim=0)
 
     # 堆叠
-    new_ids = torch.stack(out_ids, dim=0)
+    new_ids      = torch.stack(out_ids, dim=0)
     new_att_mask = torch.stack(out_att, dim=0)
-    new_labels = torch.stack(out_labels, dim=0)
+    new_labels   = torch.stack(out_labels, dim=0)
     return new_ids, new_att_mask, new_labels
+
 
 
 def update_position_ids(position_ids, token_itxy, ids, img_id):
@@ -314,61 +325,65 @@ def update_position_ids(position_ids, token_itxy, ids, img_id):
 
     pos_list = []
     max_len_new = 0
+    ti_idx = 0  # token_itxy 的指针
+    has_image = (ids == img_id).any(dim=1)
+
     dim, batch_size, max_len = position_ids.shape
+
     for b in range(batch_size):
         pos_ids = position_ids[:, b, :]  # [3, max_len]
-        # import pdb;pdb.set_trace()
-        grid_txy = token_itxy[b]  # [n_img_token, 3]
-        n_img_token = grid_txy.shape[0]
 
-        # 1. 找到“图像”部分
-        t_row = ids[b]
-        mask = (t_row == img_id)
-        idx = mask.nonzero(as_tuple=True)[0]
-        s, e_ix = idx[0].item(), idx[-1].item() + 1
+        if has_image[b]:  # 有图像 → 更新
+            grid_txy = token_itxy[ti_idx]  # 对应的图像token
+            ti_idx += 1
 
-        # 2. 占位符种类数
-        Z = max(
-            len(torch.unique(pos_ids[0, s:e_ix])),
-            len(torch.unique(pos_ids[1, s:e_ix])),
-            len(torch.unique(pos_ids[2, s:e_ix]))
-        )
-        t_max = grid_txy[:, 0].max().item()
-        x_max = grid_txy[:, 1].max().item()
-        y_max = grid_txy[:, 2].max().item()
-        Z_new = int(max(t_max, x_max, y_max)) + 1
+            n_img_token = grid_txy.shape[0]
+            t_row = ids[b]
+            mask = (t_row == img_id)
+            idx = mask.nonzero(as_tuple=True)[0]
+            s, e_ix = idx[0].item(), idx[-1].item() + 1
 
-        # 3. 前缀
-        left_pos, img_pos, right_pos = pos_ids[:, :s], pos_ids[:, s:e_ix], pos_ids[:, e_ix:]
-        # 4. 新的图像部分
-        new_img_pos = torch.zeros((3, n_img_token), dtype=pos_ids.dtype, device=pos_ids.device)
-        for i in range(n_img_token):
-            t, x, y = grid_txy[i].tolist()
-            new_img_pos[0, i] = pos_ids[0, s] + t
-            new_img_pos[1, i] = pos_ids[1, s] + x
-            new_img_pos[2, i] = pos_ids[2, s] + y
+            Z = max(
+                len(torch.unique(pos_ids[0, s:e_ix])),
+                len(torch.unique(pos_ids[1, s:e_ix])),
+                len(torch.unique(pos_ids[2, s:e_ix]))
+            )
+            t_max = grid_txy[:, 0].max().item()
+            x_max = grid_txy[:, 1].max().item()
+            y_max = grid_txy[:, 2].max().item()
+            Z_new = int(max(t_max, x_max, y_max)) + 1
 
-        # 5. 后缀文本区（整体偏移Z_new-Z）
-        text_mask = (right_pos != 1)  # padding=1
-        text_ids = right_pos.clone()
-        offset = Z_new - Z
-        text_ids[text_mask] += offset
+            left_pos, img_pos, right_pos = pos_ids[:, :s], pos_ids[:, s:e_ix], pos_ids[:, e_ix:]
+            new_img_pos = torch.zeros((3, n_img_token), dtype=pos_ids.dtype, device=pos_ids.device)
+            for i in range(n_img_token):
+                t, x, y = grid_txy[i].tolist()
+                new_img_pos[0, i] = pos_ids[0, s] + t
+                new_img_pos[1, i] = pos_ids[1, s] + x
+                new_img_pos[2, i] = pos_ids[2, s] + y
 
-        # 6. 拼接
-        new_pos = torch.cat([left_pos, new_img_pos, text_ids], dim=1)  # [3, 新长度]
+            text_mask = (right_pos != 1)  # padding=1
+            text_ids = right_pos.clone()
+            offset = Z_new - Z
+            text_ids[text_mask] += offset
+
+            new_pos = torch.cat([left_pos, new_img_pos, text_ids], dim=1)
+
+        else:  # 无图像 → 原样保留
+            new_pos = pos_ids
+
         pos_list.append(new_pos)
         max_len_new = max(max_len_new, new_pos.shape[1])
 
-    # 7. 补pad（统一到 batch 内最大长度），每行repeat last col
+    # 最后 padding
     padded_pos = []
-    for out in pos_list:  # out: [3, cur_len]
+    for out in pos_list:
         cur_len = out.shape[1]
         if cur_len < max_len_new:
             pad = max_len_new - cur_len
-            # repeat last col
-            last_col = out[:, -1:].expand(3, pad)  # [3, pad]
-            out = torch.cat([out, last_col], dim=1)  # [3, max_len_new]
+            last_col = out[:, -1:].expand(3, pad)
+            out = torch.cat([out, last_col], dim=1)
         padded_pos.append(out)
 
     final_out = torch.stack(padded_pos, dim=1)  # [3, batch, max_len_new]
     return final_out
+
