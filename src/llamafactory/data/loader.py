@@ -145,7 +145,7 @@ def _load_single_dataset(
         dataset = load_dataset(
             "parquet",
             data_files="/mnt/bn/liuwenzhuo-hl-data/779k/data_renamed/*.parquet",
-            # split="train",
+            split="train",
             num_proc=128
             # streaming=data_args.streaming and dataset_attr.load_from != "file"
         )
