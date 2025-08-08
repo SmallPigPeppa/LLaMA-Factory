@@ -51,26 +51,66 @@ from transformers.video_utils import VideoInput, make_batched_videos
 logger = logging.get_logger(__name__)
 
 
+# def smart_resize(
+#     height: int, width: int, factor: int = 28, min_pixels: int = 56 * 56, max_pixels: int = 14 * 14 * 4 * 1280
+# ):
+#     """Rescales the image so that the following conditions are met:
+#
+#     1. Both dimensions (height and width) are divisible by 'factor'.
+#
+#     2. The total number of pixels is within the range ['min_pixels', 'max_pixels'].
+#
+#     3. The aspect ratio of the image is maintained as closely as possible.
+#
+#     """
+#     if height < factor or width < factor:
+#         raise ValueError(f"height:{height} and width:{width} must be larger than factor:{factor}")
+#     elif max(height, width) / min(height, width) > 200:
+#         raise ValueError(
+#             f"absolute aspect ratio must be smaller than 200, got {max(height, width) / min(height, width)}"
+#         )
+#     h_bar = round(height / factor) * factor
+#     w_bar = round(width / factor) * factor
+#     if h_bar * w_bar > max_pixels:
+#         beta = math.sqrt((height * width) / max_pixels)
+#         h_bar = math.floor(height / beta / factor) * factor
+#         w_bar = math.floor(width / beta / factor) * factor
+#     elif h_bar * w_bar < min_pixels:
+#         beta = math.sqrt(min_pixels / (height * width))
+#         h_bar = math.ceil(height * beta / factor) * factor
+#         w_bar = math.ceil(width * beta / factor) * factor
+#     return h_bar, w_bar
+
+
 def smart_resize(
-    height: int, width: int, factor: int = 28, min_pixels: int = 56 * 56, max_pixels: int = 14 * 14 * 4 * 1280
+    height: int,
+    width: int,
+    factor: int = 28,
+    min_pixels: int = 56 * 56,
+    max_pixels: int = 14 * 14 * 4 * 1280
 ):
-    """Rescales the image so that the following conditions are met:
-
-    1. Both dimensions (height and width) are divisible by 'factor'.
-
-    2. The total number of pixels is within the range ['min_pixels', 'max_pixels'].
-
-    3. The aspect ratio of the image is maintained as closely as possible.
-
     """
+    Rescales the image so that:
+      1. Both dimensions are divisible by 'factor'.
+      2. Total pixels within ['min_pixels', 'max_pixels'].
+      3. Aspect ratio is preserved as much as possible.
+      4. If any side < factor, first upscale proportionally to >= factor.
+    """
+    # If any side < factor, upscale so both >= factor
     if height < factor or width < factor:
-        raise ValueError(f"height:{height} and width:{width} must be larger than factor:{factor}")
-    elif max(height, width) / min(height, width) > 200:
-        raise ValueError(
-            f"absolute aspect ratio must be smaller than 200, got {max(height, width) / min(height, width)}"
-        )
+        scale = max(factor / height, factor / width)
+        height = math.ceil(height * scale)
+        width = math.ceil(width * scale)
+
+    # Extremely distorted aspect ratios are not allowed
+    if max(height, width) / min(height, width) > 200:
+        raise ValueError(f"absolute aspect ratio must be < 200, got {max(height, width) / min(height, width)}")
+
+    # Round to nearest multiple of factor
     h_bar = round(height / factor) * factor
     w_bar = round(width / factor) * factor
+
+    # Clamp total pixels
     if h_bar * w_bar > max_pixels:
         beta = math.sqrt((height * width) / max_pixels)
         h_bar = math.floor(height / beta / factor) * factor
@@ -79,6 +119,7 @@ def smart_resize(
         beta = math.sqrt(min_pixels / (height * width))
         h_bar = math.ceil(height * beta / factor) * factor
         w_bar = math.ceil(width * beta / factor) * factor
+
     return h_bar, w_bar
 
 
