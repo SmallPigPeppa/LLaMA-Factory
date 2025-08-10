@@ -35,7 +35,7 @@ accelerator_config:
   dispatch_batches: false
 
 ### output
-output_dir: saves/qwen2_5vl-3b/full/sft
+output_dir: saves/qwen2_5vl-3b/full/sft-ps7_14_28
 logging_steps: 10
 save_steps: 2500
 plot_loss: true
