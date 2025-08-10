@@ -207,6 +207,7 @@ class MMPluginMixin:
             )
 
         if len(videos) != num_video_tokens:
+            import pdb;pdb.set_trace()
             raise ValueError(
                 f"The number of videos does not match the number of {VIDEO_PLACEHOLDER} tokens in {messages}."
             )
