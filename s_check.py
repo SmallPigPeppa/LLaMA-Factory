@@ -19,9 +19,10 @@ else:
             print(f"读取 {file} 时出错: {e}")
             continue
 
-        # 遍历并查找包含 <video> 的行
         for conv in df["conversations"]:
-            if pd.isna(conv):
+            # 如果是 NaN 直接跳过
+            if conv is None or (isinstance(conv, float) and pd.isna(conv)):
                 continue
+            # 转成字符串来搜索
             if "<video>" in str(conv):
                 print(conv)
