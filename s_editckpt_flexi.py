@@ -75,10 +75,10 @@ def pi_resize3d(
 # ======== 配置（按需改） ========
 CKPT_DIR = "/mnt/bn/liuwenzhuo-hl-data/Qwen/Qwen2.5-VL-3B-Instruct/"
 CKPT_DIR_MODIFIED = "/mnt/bn/liuwenzhuo-hl-data/Qwen/Qwen2.5-VL-3B-Instruct-flexi/"
-os.makedirs(CKPT_DIR_MODIFIED, exist_ok=True)
-
 OUT_PATH = os.path.join(CKPT_DIR_MODIFIED, "model.safetensors")
 PATCH_SIZE = 12
+
+os.makedirs(CKPT_DIR_MODIFIED, exist_ok=True)
 
 # ======== 读分片到 state_dict ========
 index_path = os.path.join(CKPT_DIR, "model.safetensors.index.json")
