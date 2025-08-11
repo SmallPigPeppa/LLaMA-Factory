@@ -111,7 +111,7 @@ new_index = {
     "weight_map": {k: os.path.basename(OUT_PATH) for k in state_dict.keys()}
 }
 
-index_out_path = os.path.join(CKPT_DIR_MODIFIED, "model_modified.safetensors.index.json")
+index_out_path = os.path.join(CKPT_DIR_MODIFIED, "model.safetensors.index.json")
 with open(index_out_path, "w") as f:
     json.dump(new_index, f, indent=2)
 
