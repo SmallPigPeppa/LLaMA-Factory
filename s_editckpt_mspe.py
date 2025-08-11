@@ -1,16 +1,84 @@
-# edit_qwen_safetensors.py
-import os, json, math
-import torch
-import torch.nn.functional as F
+import os, json
 from safetensors.torch import safe_open, save_file
+import torch
+from typing import List, Tuple, Union
+import torch.nn.functional as F
+
+def to_2tuple(x: Union[int, Tuple[int, int], List[int]]) -> Tuple[int, int]:
+    if isinstance(x, int):
+        return (x, x)
+    if isinstance(x, (list, tuple)):
+        if len(x) == 2:
+            return (int(x[0]), int(x[1]))
+        raise ValueError(f"Input must be int or pair of ints, got {x}")
+    raise TypeError(f"Unsupported type: {type(x)}")
+
+def pi_resize3d(
+        conv_weight: torch.Tensor,
+        target_size: Union[int, Tuple[int, int], List[int]],
+        interpolation: str = "bicubic",
+        antialias: bool = True,
+) -> torch.Tensor:
+    """
+    Pseudo-inverse resize for 3D conv weights along H and W only.
+
+    Args:
+        conv_weight: Tensor of shape [out_ch, in_ch, D, H, W]
+        target_size: New (H, W) or single int
+        interpolation: F.interpolate mode
+        antialias: whether to apply antialiasing
+
+    Returns:
+        Resized weight of shape [out_ch, in_ch, D, H', W']
+    """
+    assert conv_weight.ndim == 5, "Expect 5D tensor [O, I, D, H, W]"
+    out_ch, in_ch, depth, h, w = conv_weight.shape
+    h_new, w_new = to_2tuple(target_size)
+    device = conv_weight.device
+    dtype = conv_weight.dtype
+    float_dtype = torch.float
+    conv_weight = conv_weight.to(dtype=float_dtype)
+
+    # no-op if same spatial size
+    if (h, w) == (h_new, w_new):
+        return conv_weight.to(dtype=dtype)
+
+    # resize a single 2D slice via F.interpolate
+    def _resize2d(x: torch.Tensor) -> torch.Tensor:
+        y = F.interpolate(
+            x[None, None], (h_new, w_new),
+            mode=interpolation,
+            antialias=antialias
+        )
+        return y[0, 0]
+
+    # build pseudo-inverse matrix mapping vec(HxW) -> vec(H'xW')
+    def _make_pinv(old: Tuple[int, int], new: Tuple[int, int]) -> torch.Tensor:
+        mats = []
+        for i in range(old[0] * old[1]):
+            basis = torch.zeros(old, device=device, dtype=float_dtype)
+            basis.view(-1)[i] = 1.0
+            mats.append(_resize2d(basis).view(-1))
+        M = torch.stack(mats, dim=0)  # [H*W, H'*W']
+        return torch.linalg.pinv(M)  # [H'*W', H*W]
+
+    pinv = _make_pinv((h, w), (h_new, w_new))
+
+    # flatten spatial dims and apply pinv to each slice
+    flat = conv_weight.view(-1, h * w)  # [O*I*D, H*W]
+    resized_flat = flat @ pinv.t()  # [O*I*D, H'*W']
+    # reshape back to 5D
+    return resized_flat.view(out_ch, in_ch, depth, h_new, w_new).to(dtype=dtype)
+
+
 
 # ======== 配置（按需改） ========
-CKPT_DIR = "/mnt/bn/liuwenzhuo-hl-data/Qwen/Qwen2.5-VL-3B-Instruct/"  # 目录，内含 index.json 与分片
-OUT_PATH = os.path.join(CKPT_DIR, "model_modified.safetensors")
+CKPT_DIR = "/mnt/bn/liuwenzhuo-hl-data/Qwen/Qwen2.5-VL-3B-Instruct/"
+CKPT_DIR_MODIFIED = "/mnt/bn/liuwenzhuo-hl-data/Qwen/Qwen2.5-VL-3B-Instruct-flexi/"
+os.makedirs(CKPT_DIR_MODIFIED, exist_ok=True)
 
-
-level_seq = [1, 2, 3]
-original_patch_size = 24
+OUT_PATH = os.path.join(CKPT_DIR_MODIFIED, "model.safetensors")
+PATCH_SIZE = 12
 
 # ======== 读分片到 state_dict ========
 index_path = os.path.join(CKPT_DIR, "model.safetensors.index.json")
@@ -29,32 +97,11 @@ for key, shard_name in weight_map.items():
     state_dict[key] = opened[shard_path].get_tensor(key)
 opened.clear()
 
-import pdb;pdb.set_trace()
-
 # ======== Step 1: 替换 patchifier 为多尺度 ========
-base_w_key = "module.model.vision_model.preprocessor.patchifier.proj.weight"
-base_b_key = "module.model.vision_model.preprocessor.patchifier.proj.bias"
-norm_w_key = "module.model.vision_model.preprocessor.patchifier.norm.weight"
-
-assert base_w_key in state_dict and norm_w_key in state_dict, "找不到 patchifier 的权重键，请核对键名"
-
+base_w_key = "visual.patch_embed.proj.weight"
 base_weight = state_dict[base_w_key]
-base_bias   = state_dict.get(base_b_key, None)
-norm_weight = state_dict[norm_w_key]
-
-for idx, ratio in enumerate(level_seq):
-    patch_size = original_patch_size // ratio
-    prefix = f"module.model.vision_model.preprocessor.patchifier.patch_embed_seq.{idx}"
-
-    resized_weight = pi_resize(base_weight, target_size=patch_size)
-    state_dict[f"{prefix}.proj.weight"] = resized_weight.clone()
-    if base_bias is not None:
-        state_dict[f"{prefix}.proj.bias"] = base_bias.clone()
-    state_dict[f"{prefix}.norm.weight"] = norm_weight.clone()
-
-# 删除旧的单尺度 patchifier 参数（可选但推荐）
-for k in [base_w_key, base_b_key, norm_w_key]:
-    state_dict.pop(k, None)
+resized_weight = pi_resize3d(base_weight, target_size=PATCH_SIZE)
+state_dict[base_w_key] = resized_weight.clone()
 
 # ======== 保存为单文件 safetensors + 新 index ========
 save_file(state_dict, OUT_PATH)
@@ -63,8 +110,10 @@ new_index = {
     "metadata": {"total_size": str(total_size)},
     "weight_map": {k: os.path.basename(OUT_PATH) for k in state_dict.keys()}
 }
-with open(os.path.join(CKPT_DIR, "model_modified.safetensors.index.json"), "w") as f:
+
+index_out_path = os.path.join(CKPT_DIR_MODIFIED, "model_modified.safetensors.index.json")
+with open(index_out_path, "w") as f:
     json.dump(new_index, f, indent=2)
 
 print(f"✅ Saved: {OUT_PATH}")
-print(f"✅ Index: {os.path.join(CKPT_DIR, 'model_modified.safetensors.index.json')}")
+print(f"✅ Index: {index_out_path}")
