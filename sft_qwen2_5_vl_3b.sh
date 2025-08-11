@@ -1,3 +1,4 @@
+export TOKENIZERS_PARALLELISM=false
 export WANDB_PROJECT="llama-factory"
 ps -eo pid,comm | awk '$2~/^python(3)?$/&&$1>10000{print $1}' | xargs --no-run-if-empty kill -9
 FORCE_TORCHRUN=1 \

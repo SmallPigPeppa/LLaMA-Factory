@@ -22,13 +22,11 @@ template: qwen2_vl
 cutoff_len: 2048
 #max_samples: 600000
 overwrite_cache: true
-preprocessing_num_workers: 256
-dataloader_num_workers: 16
-#streaming: true
 ## 779289/128
 max_steps: 6088
-
-buffer_size: 128
+preprocessing_num_workers: 16
+dataloader_num_workers: 16
+buffer_size: 1024
 preprocessing_batch_size: 128
 streaming: true
 accelerator_config:

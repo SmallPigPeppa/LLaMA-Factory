@@ -126,8 +126,8 @@ def _load_single_dataset(
     elif dataset_attr.load_from == "cloud_file":
         dataset = Dataset.from_list(read_cloud_json(data_path), split=dataset_attr.split)
     else:
-        num_proc = None if (
-                data_args.streaming and dataset_attr.load_from != "file") else data_args.preprocessing_num_workers
+        # num_proc = None if (
+        #         data_args.streaming and dataset_attr.load_from != "file") else data_args.preprocessing_num_workers
         # import pdb;pdb.set_trace()
         # dataset = load_dataset(
         #     path=data_path,
@@ -147,10 +147,8 @@ def _load_single_dataset(
             # data_files="/mnt/bn/liuwenzhuo-hl-data/779k/data_renamed/*.parquet",
             data_files="/mnt/bn/liuwenzhuo-hl-data/hf_cache/hub/datasets--lmms-lab--LLaVA-NeXT-Data/snapshots/c8aef391ce214167c4ebc7f06bc05a50dee2e75f/data/*.parquet",
             split="train",
-            # num_proc=128,
-            num_proc=None,
-            streaming=True
-            # streaming=data_args.streaming and dataset_attr.load_from != "file"
+            num_proc=data_args.preprocessing_num_workers,
+            streaming=data_args.streaming and dataset_attr.load_from != "file"
         )
         if data_args.streaming and dataset_attr.load_from == "file":
             dataset = dataset.to_iterable_dataset(num_shards=training_args.dataloader_num_workers)
