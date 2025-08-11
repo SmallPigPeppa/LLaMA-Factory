@@ -1,9 +1,7 @@
 ### model
-#model_name_or_path: Qwen/Qwen2.5-VL-3B-Instruct
 model_name_or_path: /home/tiger/LLaMA-Factory/custom_models/qwen2_5_vl_3b_mspe/
-# 512 x 512 = 262144
-# 980 x 980 = 960400
-image_max_pixels: 262144
+image_max_pixels: 1440000
+window_size: 120
 video_max_pixels: 16384
 trust_remote_code: true
 
@@ -17,15 +15,11 @@ freeze_language_model: false
 deepspeed: examples/deepspeed/ds_z3_config.json
 
 ### dataset
-#dataset: mllm_demo,identity,alpaca_en_demo
 dataset: llava_779k
-#llava_779k, llava_150k_en
 template: qwen2_vl
-#
-cutoff_len: 2048
-#max_samples: 600000
+cutoff_len: 8192
 overwrite_cache: true
-## 779289/128
+# 779289/128
 max_steps: 6088
 preprocessing_num_workers: 16
 dataloader_num_workers: 16
@@ -36,20 +30,18 @@ accelerator_config:
   dispatch_batches: false
 
 ### output
-output_dir: saves/qwen2_5vl-3b/full/sft-ps14
+output_dir: saves/qwen2_5vl-3b/full/sft-ps12
 logging_steps: 1
 save_steps: 2500
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
-#report_to: none
 report_to: wandb  # choices: [none, wandb, tensorboard, swanlab, mlflow]
 run_name: qwen2.5-vl-3b
 
 ### train
 per_device_train_batch_size: 2
 gradient_accumulation_steps: 8 # 128/8/2
-#learning_rate: 2e-5
 learning_rate: 0.00002
 num_train_epochs: 1.0
 lr_scheduler_type: cosine
