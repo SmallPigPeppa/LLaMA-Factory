@@ -196,26 +196,26 @@ class MMPluginMixin:
     ):
         r"""Validate if the number of images, videos and audios match the number of placeholders in messages."""
         num_image_tokens, num_video_tokens, num_audio_tokens = 0, 0, 0
-        # for message in messages:
-        #     num_image_tokens += message["content"].count(IMAGE_PLACEHOLDER)
-        #     num_video_tokens += message["content"].count(VIDEO_PLACEHOLDER)
-        #     num_audio_tokens += message["content"].count(AUDIO_PLACEHOLDER)
-
         for message in messages:
             num_image_tokens += message["content"].count(IMAGE_PLACEHOLDER)
-            # 只在 role 是 user（或你需要的视频角色）时统计 video 占位符
-            '''
-            ValueError: The number of videos does not match the number of <video> tokens in [{'role': 'user', 'content': 'How to create a fallback image or placeholder for video in html'}, {'
-role': 'assistant', 'content': 'To create a fallback image for a video in HTML, you can use the `poster` attribute of the `<video>` element. This attribute specifies the image that will be
- displayed before the video starts playing.\n\nHere is an example:\n```\n<video controls poster="fallback-image.png">\n  <source src="my-video.mp4" type="video/mp4">\n  Sorry, your browser
- doesn\'t support the video tag.\n</video>\n```\nIn the code above, the `poster` attribute is set to "fallback-image.png", which is the image that will be displayed before the video starts
- playing. The `<source>` element is used to specify the source of the video file, and the text inside the `<video>` element is the fallback content that will be displayed if the video cann
-ot be played.'}].     
-            '''
-            if message["role"] in ("user", "video"):
-                num_video_tokens += message["content"].count(VIDEO_PLACEHOLDER)
-
+            num_video_tokens += message["content"].count(VIDEO_PLACEHOLDER)
             num_audio_tokens += message["content"].count(AUDIO_PLACEHOLDER)
+
+#         for message in messages:
+#             num_image_tokens += message["content"].count(IMAGE_PLACEHOLDER)
+#             # 只在 role 是 user（或你需要的视频角色）时统计 video 占位符
+#             '''
+#             ValueError: The number of videos does not match the number of <video> tokens in [{'role': 'user', 'content': 'How to create a fallback image or placeholder for video in html'}, {'
+# role': 'assistant', 'content': 'To create a fallback image for a video in HTML, you can use the `poster` attribute of the `<video>` element. This attribute specifies the image that will be
+#  displayed before the video starts playing.\n\nHere is an example:\n```\n<video controls poster="fallback-image.png">\n  <source src="my-video.mp4" type="video/mp4">\n  Sorry, your browser
+#  doesn\'t support the video tag.\n</video>\n```\nIn the code above, the `poster` attribute is set to "fallback-image.png", which is the image that will be displayed before the video starts
+#  playing. The `<source>` element is used to specify the source of the video file, and the text inside the `<video>` element is the fallback content that will be displayed if the video cann
+# ot be played.'}].
+#             '''
+#             if message["role"] in ("user", "video"):
+#                 num_video_tokens += message["content"].count(VIDEO_PLACEHOLDER)
+#
+#             num_audio_tokens += message["content"].count(AUDIO_PLACEHOLDER)
 
 
         if len(images) != num_image_tokens:
