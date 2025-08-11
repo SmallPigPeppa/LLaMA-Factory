@@ -89,7 +89,7 @@ SUPPORTED_CLASS_FOR_S2ATTN = {"llama"}
 
 SWANLAB_CONFIG = "swanlab_public_config.json"
 
-VIDEO_PLACEHOLDER = os.getenv("VIDEO_PLACEHOLDER", "<video>")
+VIDEO_PLACEHOLDER = os.getenv("VIDEO_PLACEHOLDER", "<tmp_video>")
 
 V_HEAD_WEIGHTS_NAME = "value_head.bin"
 
