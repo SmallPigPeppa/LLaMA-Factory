@@ -12,7 +12,7 @@ import pandas as pd
 # ======= 可按需修改的参数 =======
 DATA_GLOB = "/mnt/bn/liuwenzhuo-hl-data/hf_cache/hub/datasets--lmms-lab--LLaVA-NeXT-Data/snapshots/c8aef391ce214167c4ebc7f06bc05a50dee2e75f/data/*.parquet"
 OUT_DIR = "/mnt/bn/liuwenzhuo-hl-data/779k-shuffle"
-CHUNK_SIZE = 100_000
+CHUNK_SIZE = 10000
 RANDOM_STATE = 42  # 想要可复现的随机顺序就固定种子
 # =================================
 
