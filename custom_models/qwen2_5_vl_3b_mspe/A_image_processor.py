@@ -293,7 +293,7 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
                     height,
                     width,
                     # x2 for mspe
-                    factor=patch_size * merge_size,
+                    factor=patch_size * merge_size *2,
                     min_pixels=size["shortest_edge"],
                     max_pixels=size["longest_edge"],
                 )
