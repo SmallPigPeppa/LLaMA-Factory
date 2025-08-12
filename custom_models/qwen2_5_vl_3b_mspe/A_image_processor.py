@@ -288,12 +288,12 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
         processed_images = []
         for image in images:
             if do_resize:
-                # import pdb;pdb.set_trace()
+                import pdb;pdb.set_trace()
                 resized_height, resized_width = smart_resize(
                     height,
                     width,
                     # x2 for mspe
-                    factor=patch_size * merge_size *2,
+                    factor=patch_size * merge_size * 2,
                     min_pixels=size["shortest_edge"],
                     max_pixels=size["longest_edge"],
                 )

@@ -44,7 +44,7 @@
     "patch_size": 12,
     "spatial_merge_size": 2,
     "spatial_patch_size": 12,
-    "window_size": 108,
+    "window_size": 120,
     "fullatt_block_indexes": [
       7,
       15,
