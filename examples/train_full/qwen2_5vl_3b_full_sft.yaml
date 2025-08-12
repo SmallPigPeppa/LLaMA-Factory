@@ -30,7 +30,7 @@ accelerator_config:
   dispatch_batches: false
 
 ### output
-output_dir: saves/qwen2_5vl-3b/full/sft-ps12
+output_dir: saves/qwen2_5vl-3b/full/sft-ps12-lr1e-5
 logging_steps: 1
 save_steps: 2500
 plot_loss: true
@@ -42,7 +42,7 @@ run_name: qwen2.5-vl-3b
 ### train
 per_device_train_batch_size: 2
 gradient_accumulation_steps: 8 # 128/8/2
-learning_rate: 0.00002
+learning_rate: 0.00001
 num_train_epochs: 1.0
 lr_scheduler_type: cosine
 warmup_ratio: 0.03
