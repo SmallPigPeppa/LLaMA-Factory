@@ -41,10 +41,10 @@
     "num_heads": 16,
     "in_chans": 3,
     "out_hidden_size": 2048,
-    "patch_size": 14,
+    "patch_size": 12,
     "spatial_merge_size": 2,
     "spatial_patch_size": 14,
-    "window_size": 112,
+    "window_size": 120,
     "fullatt_block_indexes": [
       7,
       15,
