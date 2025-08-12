@@ -4,6 +4,7 @@ image_max_pixels: 1440000
 window_size: 120
 video_max_pixels: 16384
 trust_remote_code: true
+patch_size: 12
 
 ### method
 stage: sft
