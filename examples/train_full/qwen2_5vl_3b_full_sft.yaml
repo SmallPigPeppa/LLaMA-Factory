@@ -1,7 +1,6 @@
 ### model
 model_name_or_path: /home/tiger/LLaMA-Factory/custom_models/qwen2_5_vl_3b_mspe/
-#image_max_pixels: 1440000
-image_max_pixels: 262144
+image_max_pixels: 1587600
 image_min_pixels: 2304
 video_max_pixels: 16384
 trust_remote_code: true
@@ -19,7 +18,7 @@ deepspeed: examples/deepspeed/ds_z3_config.json
 ### dataset
 dataset: llava_779k
 template: qwen2_vl
-cutoff_len: 8192
+cutoff_len: 16384
 overwrite_cache: true
 # 779289/128
 max_steps: 6088
