@@ -54,61 +54,78 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     return scale_idx, token_itxy
 
 
+
 def recompose_windows(
-        window_adp_ps,
-        hidden_states_dict,
-        position_embeddings_dict,
-        window_index_dict,
-        cu_window_seqlens_dict,
+        win_adp_ps,
+        win_feat_dict,
+        pos_emb_dict,
+        win_idx_dict,
+        win_cu_dict,
         grid_thw_dict,
         spatial_merge_unit,
         spatial_merge_size
 ):
-    hidden_states_list = []
-    position_embeddings_list = []
-    window_index_list = []
+    win_feat_list = []
+    pos_emb_list = []
+    win_idx_list = []
     token_itxy_list = []
-    cu_window_seqlens = [0]
+    win_cu_seq = [0]
 
     # min_ps = min(window_adp_ps)
-    min_ps = min(hidden_states_dict.keys())
+    min_ps = min(win_feat_dict.keys())
 
     # 遍历每个窗口及其对应的patch size
-    for idx, ps in enumerate(window_adp_ps):
+    for idx, ps in enumerate(win_adp_ps):
         # 获取当前窗口的起止位置
-        start = cu_window_seqlens_dict[ps][idx]
-        end = cu_window_seqlens_dict[ps][idx + 1]
-        win_start = cu_window_seqlens_dict[ps][idx] // spatial_merge_unit
-        win_end = cu_window_seqlens_dict[ps][idx + 1] // spatial_merge_unit
+        start = win_cu_dict[ps][idx]
+        end = win_cu_dict[ps][idx + 1]
+        win_start = win_cu_dict[ps][idx] // spatial_merge_unit
+        win_end = win_cu_dict[ps][idx + 1] // spatial_merge_unit
 
         # 提取对应窗口的数据
-        hidden_states_list.append(hidden_states_dict[ps][start:end])
-        position_embeddings_list.append((
-            position_embeddings_dict[ps][0][start:end],
-            position_embeddings_dict[ps][1][start:end]
+        # win_feat_list.append(win_feat_dict[ps][start:end])
+
+        win_feat_ps = win_feat_dict[ps][start:end]
+        L = win_feat_ps.size(0)
+        # 其他特征对齐后加权
+        others = []
+        for k in win_feat_dict:
+            if k == ps: continue
+            ss, ee = win_cu_dict[k][idx], win_cu_dict[k][idx + 1]
+            feat = win_feat_dict[k][ss:ee]
+            feat = feat[:L] if feat.size(0) >= L else F.pad(feat, (0, 0, 0, L - feat.size(0)))
+            others.append(feat)
+        if others:
+            win_feat_ps = win_feat_ps + 0. * torch.mean(torch.stack(others), dim=0)
+        win_feat_list.append(win_feat_ps)
+
+
+        pos_emb_list.append((
+            pos_emb_dict[ps][0][start:end],
+            pos_emb_dict[ps][1][start:end]
         ))
         # unified to min patchsize
-        new_idx, token_itxy = scale_window_index(ps, min_ps, grid_thw_dict, window_index_dict, win_start, win_end, spatial_merge_unit, spatial_merge_size)
-        window_index_list.append(new_idx)
+        new_idx, token_itxy = scale_window_index(ps, min_ps, grid_thw_dict, win_idx_dict, win_start, win_end, spatial_merge_unit, spatial_merge_size)
+        win_idx_list.append(new_idx)
         token_itxy_list.append(token_itxy)
 
         # 更新累计长度
-        cu_window_seqlens.append(cu_window_seqlens[-1] + (end - start))
+        win_cu_seq.append(win_cu_seq[-1] + (end - start))
 
     # 拼接结果
-    hidden_states = torch.cat(hidden_states_list, dim=0)
-    position_embeddings_cos = torch.cat([emb[0] for emb in position_embeddings_list], dim=0)
-    position_embeddings_sin = torch.cat([emb[1] for emb in position_embeddings_list], dim=0)
+    hidden_states = torch.cat(win_feat_list, dim=0)
+    position_embeddings_cos = torch.cat([emb[0] for emb in pos_emb_list], dim=0)
+    position_embeddings_sin = torch.cat([emb[1] for emb in pos_emb_list], dim=0)
     # import pdb;pdb.set_trace()
-    window_index = torch.cat(window_index_list, dim=0)
-    cu_window_seqlens = torch.tensor(cu_window_seqlens, dtype=cu_window_seqlens[-1].dtype,
-                                     device=cu_window_seqlens[-1].device)
+    window_index = torch.cat(win_idx_list, dim=0)
+    win_cu_seq = torch.tensor(win_cu_seq, dtype=win_cu_seq[-1].dtype,
+                                     device=win_cu_seq[-1].device)
     position_embeddings = (position_embeddings_cos, position_embeddings_sin)
 
     # for token itxy
     token_itxy = torch.cat(token_itxy_list, dim=0)  # [N, 4]
 
-    return hidden_states, position_embeddings, window_index, cu_window_seqlens, token_itxy
+    return hidden_states, position_embeddings, window_index, win_cu_seq, token_itxy
 
 
 def repatchify(

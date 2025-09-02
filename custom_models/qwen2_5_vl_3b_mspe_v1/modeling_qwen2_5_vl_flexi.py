@@ -696,7 +696,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         patch_sizes = [7,14]
         grid_thw_dict = {}
-        hidden_states_dict = {}
+        win_feat_dict = {}
         rotary_pos_emb_dict = {}
         win_idx_dict = {}
         win_cu_dict = {}
@@ -715,8 +715,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                 new_patch_size=ps
             )
             f2m = flatten_to_merge_idx(grid_thw=grid_thw_dict[ps], merge_size=self.spatial_merge_size)
-            hidden_states_dict[ps] = hidden_states_rep[f2m]
-            hidden_states_dict[ps] = self.patch_embed(hidden_states_dict[ps], patch_size=ps)
+            win_feat_dict[ps] = hidden_states_rep[f2m]
+            win_feat_dict[ps] = self.patch_embed(win_feat_dict[ps], patch_size=ps)
             rotary_pos_emb_dict[ps] = self.rot_pos_emb(grid_thw_dict[ps])
             win, cu = self.get_window_index(grid_thw_dict[ps], patch_size=ps)
             cu = torch.tensor(
@@ -730,11 +730,11 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         # 2) reorder win idx with merge
         for ps in patch_sizes:
-            seq_len, _ = hidden_states_dict[ps].size()
-            hidden_states_dict[ps] = hidden_states_dict[ps].reshape(
+            seq_len, _ = win_feat_dict[ps].size()
+            win_feat_dict[ps] = win_feat_dict[ps].reshape(
                 seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
-            hidden_states_dict[ps] = hidden_states_dict[ps][win_idx_dict[ps], :, :]
-            hidden_states_dict[ps] = hidden_states_dict[ps].reshape(seq_len, -1)
+            win_feat_dict[ps] = win_feat_dict[ps][win_idx_dict[ps], :, :]
+            win_feat_dict[ps] = win_feat_dict[ps].reshape(seq_len, -1)
             rotary_pos_emb_dict[ps] = rotary_pos_emb_dict[ps].reshape(
                 seq_len // self.spatial_merge_unit,
                 self.spatial_merge_unit, -1)
@@ -745,14 +745,15 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         # import pdb;pdb.set_trace()
         # 3) window patchsize
-        window_adp_ps = random_sample_ps(win_cu_dict, patch_sizes, grid_thw_dict)
+        win_adp_ps = random_sample_ps(win_cu_dict, patch_sizes, grid_thw_dict)
         # window_adp_ps = random_window_ps(cu_window_seqlens_ps, patch_sizes)
 
-        print('window_adp_ps:', window_adp_ps)
+        print('window_adp_ps:', win_adp_ps)
+
 
         hidden_states, position_embeddings, window_index, cu_window_seqlens, token_itxy = recompose_windows(
-            window_adp_ps,
-            hidden_states_dict,
+            win_adp_ps,
+            win_feat_dict,
             pos_emb_dict,
             win_idx_dict,
             win_cu_dict,
