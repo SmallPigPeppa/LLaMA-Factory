@@ -111,7 +111,7 @@ def get_infer_adp_win_patchsize(win_feat_dict, win_thws_dict, win_cu_dict):
     n = len(diffs)
     sorted_idx = sorted(range(n), key=lambda i: diffs[i], reverse=True)
     patch_assign = [14] * n  # 默认都分配 14
-    for idx in sorted_idx[:min(6, n)]:
+    for idx in sorted_idx[:min(12, n)]:
         patch_assign[idx] = 7
 
     return diffs, patch_assign
