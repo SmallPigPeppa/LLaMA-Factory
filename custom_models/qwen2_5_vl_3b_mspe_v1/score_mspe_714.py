@@ -62,7 +62,7 @@ def get_adp_win_patchsize(win_feat_dict, win_thws_dict, win_cu_dict):
 
     diffs = []
     for f7, f14, thw7, thw14 in zip(win_feats_7, win_feats_14, win_thws_dict[7], win_thws_dict[14]):
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         f7 = reshape_to_thw(f7, thw7)
         f14 = reshape_to_thw(f14, thw14)
 
@@ -77,3 +77,42 @@ def get_adp_win_patchsize(win_feat_dict, win_thws_dict, win_cu_dict):
     patch_assign = assign_patchsize_from_diff(diffs)
 
     return diffs, patch_assign
+
+
+def get_infer_adp_win_patchsize(win_feat_dict, win_thws_dict, win_cu_dict):
+    """
+    输入:
+        win_feat_dict: {ps: feature tensor}, e.g. {7:..., 14:...}, shape [N,C]
+        win_thws_dict: {ps: [(T,H,W), ...]}
+        win_cu_dict:   {ps: cu_seqlens}
+    输出:
+        diffs: 每个 window 的差异值
+        patch_assign: 每个 window 的自适应 patch size (7/14)
+    """
+    # 1. 拆分成 window
+    win_feats_7 = split_by_cu(win_feat_dict[7], win_cu_dict[7])
+    win_feats_14 = split_by_cu(win_feat_dict[14], win_cu_dict[14])
+
+    diffs = []
+    for f7, f14, thw7, thw14 in zip(win_feats_7, win_feats_14, win_thws_dict[7], win_thws_dict[14]):
+        # import pdb; pdb.set_trace()
+        f7 = reshape_to_thw(f7, thw7)
+        f14 = reshape_to_thw(f14, thw14)
+
+        # 对齐到 ps=14 的空间大小
+        f7_resized = resize_feat_3d(f7, thw14)
+        f14_resized = f14
+
+        diff_val = window_diff(f7_resized, f14_resized)
+        diffs.append(diff_val)
+
+    # 2. 根据差异分配 patch size
+    # 2. 按照差异值从大到小排序
+    n = len(diffs)
+    sorted_idx = sorted(range(n), key=lambda i: diffs[i], reverse=True)
+    patch_assign = [14] * n  # 默认都分配 14
+    for idx in sorted_idx[:min(6, n)]:
+        patch_assign[idx] = 7
+
+    return diffs, patch_assign
+
