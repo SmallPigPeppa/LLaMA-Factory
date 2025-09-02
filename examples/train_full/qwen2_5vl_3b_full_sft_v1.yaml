@@ -1,0 +1,58 @@
+### model
+model_name_or_path: /home/tiger/LLaMA-Factory/custom_models/qwen2_5_vl_3b_mspe_v1/
+image_max_pixels: 1587600
+image_min_pixels: 2304
+video_max_pixels: 16384
+trust_remote_code: true
+
+
+### method
+stage: sft
+do_train: true
+finetuning_type: full
+freeze_vision_tower: false
+freeze_multi_modal_projector: false
+freeze_language_model: false
+deepspeed: examples/deepspeed/ds_z3_config.json
+
+### dataset
+dataset: llava_779k
+template: qwen2_vl
+cutoff_len: 16384
+overwrite_cache: true
+# 779289/128
+max_steps: 6088
+preprocessing_num_workers: 16
+dataloader_num_workers: 16
+buffer_size: 1024
+preprocessing_batch_size: 128
+streaming: true
+accelerator_config:
+  dispatch_batches: false
+
+### output
+output_dir: saves/qwen2_5vl-3b-flexi-v1/full/sft-ps12-lr1e-5
+logging_steps: 1
+save_steps: 2500
+plot_loss: true
+overwrite_output_dir: true
+save_only_model: false
+report_to: wandb  # choices: [none, wandb, tensorboard, swanlab, mlflow]
+run_name: qwen2.5-vl-3b
+
+### train
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 8 # 128/8/2
+learning_rate: 0.00001
+num_train_epochs: 1.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+bf16: true
+ddp_timeout: 180000000
+resume_from_checkpoint: null
+
+### eval
+# val_size: 0.1
+# per_device_eval_batch_size: 1
+# eval_strategy: steps
+# eval_steps: 500

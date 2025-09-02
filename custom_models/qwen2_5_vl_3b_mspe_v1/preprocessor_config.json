@@ -14,6 +14,6 @@
     0.26130258,
     0.27577711
   ],
-  "image_processor_type": "Qwen2VLImageProcessorMSPE",
+  "image_processor_type": "Qwen2VLImageProcessor",
   "processor_class": "Qwen2_5_VLProcessor"
 }

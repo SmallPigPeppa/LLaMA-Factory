@@ -54,34 +54,41 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     return scale_idx, token_itxy
 
 
-def recompose_windows(window_adp_ps, hidden_states_ps, position_embeddings_ps, window_index_ps, cu_window_seqlens_ps,
-                      grid_thw_ps,
-                      spatial_merge_unit, spatial_merge_size):
+def recompose_windows(
+        window_adp_ps,
+        hidden_states_dict,
+        position_embeddings_dict,
+        window_index_dict,
+        cu_window_seqlens_dict,
+        grid_thw_dict,
+        spatial_merge_unit,
+        spatial_merge_size
+):
     hidden_states_list = []
     position_embeddings_list = []
     window_index_list = []
     token_itxy_list = []
     cu_window_seqlens = [0]
 
-    min_ps = min(window_adp_ps)
+    # min_ps = min(window_adp_ps)
+    min_ps = min(hidden_states_dict.keys())
 
     # 遍历每个窗口及其对应的patch size
     for idx, ps in enumerate(window_adp_ps):
         # 获取当前窗口的起止位置
-        start = cu_window_seqlens_ps[ps][idx]
-        end = cu_window_seqlens_ps[ps][idx + 1]
-        win_start = cu_window_seqlens_ps[ps][idx] // spatial_merge_unit
-        win_end = cu_window_seqlens_ps[ps][idx + 1] // spatial_merge_unit
+        start = cu_window_seqlens_dict[ps][idx]
+        end = cu_window_seqlens_dict[ps][idx + 1]
+        win_start = cu_window_seqlens_dict[ps][idx] // spatial_merge_unit
+        win_end = cu_window_seqlens_dict[ps][idx + 1] // spatial_merge_unit
 
         # 提取对应窗口的数据
-        hidden_states_list.append(hidden_states_ps[ps][start:end])
+        hidden_states_list.append(hidden_states_dict[ps][start:end])
         position_embeddings_list.append((
-            position_embeddings_ps[ps][0][start:end],
-            position_embeddings_ps[ps][1][start:end]
+            position_embeddings_dict[ps][0][start:end],
+            position_embeddings_dict[ps][1][start:end]
         ))
         # unified to min patchsize
-        new_idx, token_itxy = scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, win_start, win_end,
-                                                 spatial_merge_unit, spatial_merge_size)
+        new_idx, token_itxy = scale_window_index(ps, min_ps, grid_thw_dict, window_index_dict, win_start, win_end, spatial_merge_unit, spatial_merge_size)
         window_index_list.append(new_idx)
         token_itxy_list.append(token_itxy)
 
@@ -233,10 +240,10 @@ def merge_to_flatten_idx(grid_thw: torch.Tensor, merge_size: int) -> torch.Tenso
 
 
 def update_ids_masks_labels(
-        ids: torch.Tensor,        # (B, N)
+        ids: torch.Tensor,  # (B, N)
         att_masks: torch.Tensor,  # (B, N)
-        labels: torch.Tensor,     # (B, N)
-        num_image_token: list,    # 只对应“有图像”的样本，顺序与原batch一致
+        labels: torch.Tensor,  # (B, N)
+        num_image_token: list,  # 只对应“有图像”的样本，顺序与原batch一致
         img_id: int,
 ):
     """
@@ -267,16 +274,16 @@ def update_ids_masks_labels(
             ni_idx += 1
 
             # 三段拆分
-            left_ids,  block_ids,  right_ids  = t_row[:s], t_row[s:e_ix], t_row[e_ix:]
-            left_att,  block_att,  right_att  = m_row[:s], m_row[s:e_ix], m_row[e_ix:]
-            left_lbl,  block_lbl,  right_lbl  = l_row[:s], l_row[s:e_ix], l_row[e_ix:]
+            left_ids, block_ids, right_ids = t_row[:s], t_row[s:e_ix], t_row[e_ix:]
+            left_att, block_att, right_att = m_row[:s], m_row[s:e_ix], m_row[e_ix:]
+            left_lbl, block_lbl, right_lbl = l_row[:s], l_row[s:e_ix], l_row[e_ix:]
 
             # 延展/截断
             if new_count > old_count:
                 ext = new_count - old_count
-                block_ids = torch.cat([block_ids,  block_ids[-1:].expand(ext)], dim=0)
-                block_att = torch.cat([block_att,  block_att[-1:].expand(ext)], dim=0)
-                block_lbl = torch.cat([block_lbl,  block_lbl[-1:].expand(ext)], dim=0)
+                block_ids = torch.cat([block_ids, block_ids[-1:].expand(ext)], dim=0)
+                block_att = torch.cat([block_att, block_att[-1:].expand(ext)], dim=0)
+                block_lbl = torch.cat([block_lbl, block_lbl[-1:].expand(ext)], dim=0)
             elif new_count < old_count:
                 block_ids = block_ids[:new_count]
                 block_att = block_att[:new_count]
@@ -304,16 +311,15 @@ def update_ids_masks_labels(
     for i in range(B):
         pad_len = max_len - out_ids[i].shape[0]
         if pad_len > 0:
-            out_ids[i]    = torch.cat([out_ids[i],    out_ids[i][-1:].expand(pad_len)], dim=0)
-            out_att[i]    = torch.cat([out_att[i],    out_att[i][-1:].expand(pad_len)], dim=0)
+            out_ids[i] = torch.cat([out_ids[i], out_ids[i][-1:].expand(pad_len)], dim=0)
+            out_att[i] = torch.cat([out_att[i], out_att[i][-1:].expand(pad_len)], dim=0)
             out_labels[i] = torch.cat([out_labels[i], out_labels[i][-1:].expand(pad_len)], dim=0)
 
     # 堆叠
-    new_ids      = torch.stack(out_ids, dim=0)
+    new_ids = torch.stack(out_ids, dim=0)
     new_att_mask = torch.stack(out_att, dim=0)
-    new_labels   = torch.stack(out_labels, dim=0)
+    new_labels = torch.stack(out_labels, dim=0)
     return new_ids, new_att_mask, new_labels
-
 
 
 def update_position_ids(position_ids, token_itxy, ids, img_id):
@@ -386,4 +392,3 @@ def update_position_ids(position_ids, token_itxy, ids, img_id):
 
     final_out = torch.stack(padded_pos, dim=1)  # [3, batch, max_len_new]
     return final_out
-
