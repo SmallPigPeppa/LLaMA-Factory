@@ -694,7 +694,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             `torch.Tensor`: hidden_states.
         """
 
-        patch_sizes = [7, 14]
+        patch_sizes = [14]
         grid_thw_dict = {}
         hidden_states_dict = {}
         rotary_pos_emb_dict = {}
