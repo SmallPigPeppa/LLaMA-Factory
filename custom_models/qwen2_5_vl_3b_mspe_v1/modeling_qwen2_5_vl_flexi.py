@@ -61,7 +61,7 @@ import random
 from .A_utilsv2 import update_position_ids, update_ids_masks_labels, merge_to_flatten_idx, repatchify, \
     flatten_to_merge_idx, recompose_windows, split_to_window
 from .A_adptive import random_sample_ps, random_window_ps
-from score_mspe_714 import get_adp_win_patchsize
+from .score_mspe_714 import get_adp_win_patchsize
 
 
 class Qwen2_5_VLMLP(nn.Module):
