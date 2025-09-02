@@ -59,8 +59,9 @@ logger = logging.get_logger(__name__)
 
 import random
 from .A_utilsv2 import update_position_ids, update_ids_masks_labels, merge_to_flatten_idx, repatchify, \
-    flatten_to_merge_idx, recompose_windows
+    flatten_to_merge_idx, recompose_windows, split_to_window
 from .A_adptive import random_sample_ps, random_window_ps
+from score_mspe_714 import get_adp_win_patchsize
 
 
 class Qwen2_5_VLMLP(nn.Module):
@@ -701,6 +702,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         win_idx_dict = {}
         win_cu_dict = {}
         pos_emb_dict = {}
+        win_thw_dict={}
 
         # import pdb;pdb.set_trace()
 
@@ -727,6 +729,9 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             cu = torch.unique_consecutive(cu)
             win_idx_dict[ps] = win
             win_cu_dict[ps] = cu
+            win_thw_dict[ps],_= split_to_window(img_thw=grid_thw_dict[ps], win_size=112, patch_size=ps)
+
+        import pdb;pdb.set_trace()
 
         # 2) reorder win idx with merge
         for ps in patch_sizes:
@@ -745,7 +750,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         # import pdb;pdb.set_trace()
         # 3) window patchsize
-        win_adp_ps = random_sample_ps(win_cu_dict, patch_sizes, grid_thw_dict)
+        # win_adp_ps = random_sample_ps(win_cu_dict, patch_sizes, grid_thw_dict)
+        win_adp_ps = get_adp_win_patchsize(win_feat_dict, win_thw_dict, win_cu_dict)
         # window_adp_ps = random_window_ps(cu_window_seqlens_ps, patch_sizes)
 
         print('window_adp_ps:', win_adp_ps)

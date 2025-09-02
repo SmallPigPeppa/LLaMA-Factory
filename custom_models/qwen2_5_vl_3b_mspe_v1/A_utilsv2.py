@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from typing import  Tuple
 
 
 def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spatial_merge_unit, spatial_merge_size):
@@ -52,6 +53,64 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     # return rescaled indices
     token_itxy = torch.stack([I.expand(t.shape[0]), t, h * f, w * f], dim=1).type_as(cu)
     return scale_idx, token_itxy
+
+
+
+def split_to_window(
+        img_thw: torch.Tensor,  # [B, 3], each row is (gt, gh, gw)
+        win_size: int,
+        patch_size: int
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Reorder patches from grid order (t, h, w) to window-first order.
+
+    Returns:
+      x_win:       [N, dim] with the same patches but grouped by windows
+      window_hws:  [B_window, 3] giving (t, h, w) size in patches for each window (edges may be smaller)
+      coords:      [N, 3] integer tensor, each row is (t, h, w) patch coordinates
+    """
+    win_token = win_size // patch_size
+    win_thw, coord_chunks = [], []
+
+    for img_idx, (gt, gh, gw) in enumerate(img_thw.tolist()):
+        gt, gh, gw = int(gt), int(gh), int(gw)
+
+        # 构造三维坐标 grid
+        grid = torch.arange(gt * gh * gw, device=img_thw.device).view(gt, gh, gw)
+        ts = torch.arange(gt, device=img_thw.device).view(-1, 1, 1).expand(gt, gh, gw)
+        hs = torch.arange(gh, device=img_thw.device).view(1, -1, 1).expand(gt, gh, gw)
+        ws = torch.arange(gw, device=img_thw.device).view(1, 1, -1).expand(gt, gh, gw)
+        imgs = torch.full((gt, gh, gw), img_idx, device=img_thw.device)
+
+        # 按照 h,w 划分 window，t 不切
+        for r in range(0, gh, win_token):
+            for c in range(0, gw, win_token):
+                sub = grid[:, r:r + win_token, c:c + win_token]  # [gt, h_win, w_win]
+                sub_ts, sub_hs, sub_ws = ts[:, r:r + win_token, c:c + win_token], \
+                                         hs[:, r:r + win_token, c:c + win_token], \
+                                         ws[:, r:r + win_token, c:c + win_token]
+                sub_imgs = imgs[:, r:r + win_token, c:c + win_token]
+
+                win_thw.append((sub.size(0), sub.size(1), sub.size(2)))
+                coord_chunks.append(
+                    torch.stack([
+                        sub_imgs.reshape(-1),
+                        sub_ts.reshape(-1),
+                        sub_hs.reshape(-1),
+                        sub_ws.reshape(-1)
+                    ], dim=1)
+                )
+
+
+    coords = torch.cat(coord_chunks, dim=0)
+
+    win_thw = img_thw.new_tensor(win_thw)  # [B_window, 3]
+
+    return win_thw, coords
+
+
+
+
 
 
 
