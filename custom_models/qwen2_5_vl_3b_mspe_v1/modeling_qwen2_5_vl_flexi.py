@@ -701,7 +701,6 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         win_idx_dict = {}
         win_cu_dict = {}
         pos_emb_dict = {}
-        coord_itxy_dict={}
 
         # import pdb;pdb.set_trace()
 
