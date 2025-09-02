@@ -507,7 +507,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         self.merger = Qwen2_5_VLPatchMerger(
             dim=config.out_hidden_size,
             context_dim=config.hidden_size,
-            spatial_mergƒe_size=config.spatial_merge_size,
+            spatial_merge_size=config.spatial_merge_size,
         )
         self.gradient_checkpointing = False
 
