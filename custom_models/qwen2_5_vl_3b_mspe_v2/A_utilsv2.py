@@ -228,7 +228,7 @@ def recompose_windows_v2(
         ))
         # unified to pixel coord
         coord = win_coord_dict[ps][start:end]
-        coord[:, -2:] *= patch_size
+        coord[:, -2:] *= ps
         win_coord_list.append(coord)
 
         # 更新累计长度
