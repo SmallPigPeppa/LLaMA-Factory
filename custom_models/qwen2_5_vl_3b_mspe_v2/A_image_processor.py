@@ -20,11 +20,10 @@
 """Image processor class for Qwen2-VL."""
 
 import math
-from typing import Optional, Union
+from typing import Dict, List, Optional, Union
 
 import numpy as np
-
-from transformers import BaseImageProcessor, BatchFeature
+from transformers.image_processing_utils import BaseImageProcessor, BatchFeature
 from transformers.image_transforms import (
     convert_to_rgb,
     resize,
@@ -50,7 +49,6 @@ from transformers.video_utils import VideoInput, make_batched_videos
 
 
 logger = logging.get_logger(__name__)
-
 
 def smart_resize(
     height: int, width: int, factor: int = 28, min_pixels: int = 56 * 56, max_pixels: int = 14 * 14 * 4 * 1280
