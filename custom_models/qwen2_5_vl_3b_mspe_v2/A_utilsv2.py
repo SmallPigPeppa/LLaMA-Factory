@@ -196,7 +196,6 @@ def recompose_windows_v2(
 ):
     win_feat_list = []
     pos_emb_list = []
-    win_idx_list = []
     win_coord_list = []
     win_cu_seq = [0]
 
@@ -230,7 +229,7 @@ def recompose_windows_v2(
         # unified to pixel coord
         coord = win_coord_dict[ps][start:end]
         coord[:, -2:] *= patch_size
-        win_idx_list.append(coord)
+        win_coord_list.append(coord)
 
         # 更新累计长度
         win_cu_seq.append(win_cu_seq[-1] + (end - start))
