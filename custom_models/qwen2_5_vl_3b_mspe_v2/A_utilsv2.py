@@ -97,7 +97,7 @@ def split_to_window(
                         sub_hs.reshape(-1),
                         sub_ws.reshape(-1)
                     ], dim=1)
-                import pdb;pdb.set_trace()
+                # import pdb;pdb.set_trace()
                 idx_merge = flatten_to_merge_idx(grid_thw=torch.tensor([sub.size(0), sub.size(1), sub.size(2)]).unsqueeze(0), merge_size=2)
                 coord_chunks.append(win_coords[idx_merge])
 
