@@ -1,7 +1,7 @@
 {
   "min_pixels": 3136,
   "max_pixels": 396900,
-  "patch_size": 14,
+  "patch_size": 7,
   "temporal_patch_size": 2,
   "merge_size": 2,
   "image_mean": [
