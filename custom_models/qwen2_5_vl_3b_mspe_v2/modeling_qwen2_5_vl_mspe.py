@@ -253,39 +253,6 @@ class Qwen2_5_VisionPatchEmbedFlexi(nn.Module):
         return hidden_states
 
 
-class Qwen2_5_VisionPatchEmbedMSPE(nn.Module):
-    def __init__(
-            self,
-            patch_size: int = 14,
-            temporal_patch_size: int = 2,
-            in_channels: int = 3,
-            embed_dim: int = 1152,
-    ) -> None:
-        super().__init__()
-        self.patch_size = patch_size
-        self.temporal_patch_size = temporal_patch_size
-        self.in_channels = in_channels
-        self.embed_dim = embed_dim
-        kernel_size = [temporal_patch_size, patch_size, patch_size]
-        self.proj = nn.Conv3d(in_channels, embed_dim, kernel_size=kernel_size, stride=kernel_size, bias=False)
-
-    def forward(self, hidden_states: torch.Tensor, patch_size: int = 14) -> torch.Tensor:
-        target_dtype = self.proj.weight.dtype
-        hidden_states = hidden_states.view(
-            -1, self.in_channels, self.temporal_patch_size, patch_size, patch_size
-        )
-        resized_weight = pi_resize3d(
-            conv_weight=self.proj.weight,
-            target_size=patch_size,
-            interpolation="bicubic",
-            antialias=True,
-        )
-        # hidden_states = self.proj(hidden_states.to(dtype=target_dtype)).view(-1, self.embed_dim)
-        hidden_states = F.conv3d(
-            hidden_states.to(dtype=target_dtype), resized_weight, bias=self.proj.bias, stride=patch_size
-        ).view(-1, self.embed_dim)
-
-        return hidden_states
 
 
 class Qwen2_5_VisionRotaryEmbedding(nn.Module):
