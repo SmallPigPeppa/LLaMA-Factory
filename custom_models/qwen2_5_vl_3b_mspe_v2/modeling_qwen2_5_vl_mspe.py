@@ -799,12 +799,12 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         # import pdb;pdb.set_trace()
         # 3) window patchsize
-        # win_adp_ps = random_sample_ps(win_cu_dict, patch_sizes, grid_thw_dict)
-        diffs, win_adp_ps = get_infer_adp_win_patchsize(win_feat_dict, win_thw_dict, win_cu_dict)
+        win_adp_ps = random_sample_ps(win_cu_dict, patch_sizes, grid_thw_dict)
+        # diffs, win_adp_ps = get_infer_adp_win_patchsize(win_feat_dict, win_thw_dict, win_cu_dict)
         # window_adp_ps = random_window_ps(cu_window_seqlens_ps, patch_sizes)
 
         print('window_adp_ps:', win_adp_ps)
-        print('diffs:', diffs)
+        # print('diffs:', diffs)
 
         hidden_states, position_embeddings, window_index, cu_window_seqlens, token_itxy = recompose_windows(
             win_adp_ps,
