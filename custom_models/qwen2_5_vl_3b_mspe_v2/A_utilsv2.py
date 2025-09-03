@@ -91,19 +91,20 @@ def split_to_window(
                 sub_imgs = imgs[:, r:r + win_token, c:c + win_token]
 
                 win_thw.append((sub.size(0), sub.size(1), sub.size(2)))
-                coord_chunks.append(
-                    torch.stack([
+                win_coords = torch.stack([
                         sub_imgs.reshape(-1),
                         sub_ts.reshape(-1),
                         sub_hs.reshape(-1),
                         sub_ws.reshape(-1)
                     ], dim=1)
-                )
+                import pdb;pdb.set_trace()
+                idx_merge = flatten_to_merge_idx(grid_thw=torch.tensor([sub.size(0), sub.size(1), sub.size(2)]).unsqueeze(0), merge_size=2)
+                coord_chunks.append(win_coords[idx_merge])
 
     coords = torch.cat(coord_chunks, dim=0)  # [N_patch, 4]
     import pdb;pdb.set_trace()
-    idx_merge = flatten_to_merge_idx(grid_thw=img_thw, merge_size=2)
-    coords = coords[idx_merge]
+    # idx_merge = flatten_to_merge_idx(grid_thw=img_thw, merge_size=2)
+    # coords = coords[idx_merge]
 
     win_thw = img_thw.new_tensor(win_thw)  # [B_window, 3]
 
@@ -248,36 +249,17 @@ def repatchify(
     return hidden_states_new, new_grid_thw
 
 
-# def flatten_to_merge_idx(grid_thw: torch.Tensor, merge_size: int) -> torch.Tensor:
-#     """
-#     Convert a batch of grid_thw into continuous merged indices.
-#
-#     Args:
-#         grid_thw (torch.Tensor): Shape (batch_size, 3), each row is [t, h, w].
-#         merge_size (int): The size of the merge block.
-#
-#     Returns:
-#         torch.Tensor: Flattened indices for the entire batch, continuous.
-#     """
-#     batch_size = grid_thw.size(0)
-#     batch_indices = []
-#     offset = 0
-#
-#     for i in range(batch_size):
-#         t, h, w = grid_thw[i].tolist()
-#         idx = torch.arange(t * h * w, dtype=torch.long).reshape(t, h, w)
-#         # Reshape into blocks and rearrange axes for merged blocks
-#         idx = idx.reshape(t, h // merge_size, merge_size, w // merge_size, merge_size)
-#         idx = idx.permute(0, 1, 3, 2, 4).contiguous()
-#         idx = idx.flatten() + offset
-#
-#         batch_indices.append(idx)
-#         offset += t * h * w
-#
-#     return torch.cat(batch_indices, dim=0)
-
-from einops import rearrange
 def flatten_to_merge_idx(grid_thw: torch.Tensor, merge_size: int) -> torch.Tensor:
+    """
+    Convert a batch of grid_thw into continuous merged indices.
+
+    Args:
+        grid_thw (torch.Tensor): Shape (batch_size, 3), each row is [t, h, w].
+        merge_size (int): The size of the merge block.
+
+    Returns:
+        torch.Tensor: Flattened indices for the entire batch, continuous.
+    """
     batch_size = grid_thw.size(0)
     batch_indices = []
     offset = 0
@@ -285,20 +267,16 @@ def flatten_to_merge_idx(grid_thw: torch.Tensor, merge_size: int) -> torch.Tenso
     for i in range(batch_size):
         t, h, w = grid_thw[i].tolist()
         idx = torch.arange(t * h * w, dtype=torch.long).reshape(t, h, w)
-
-        # 这里用 einops 更直观：
-        # (t, h, w) -> (t, h//m, w//m, m, m)
-        # 然后合并成 (t, (h//m)*(w//m), m*m)
-        idx = rearrange(idx, "t (hb m1) (wb m2) -> t (hb wb) (m1 m2)",
-                        m1=merge_size, m2=merge_size)
-
-        # 展平成一维，并加 offset
+        # Reshape into blocks and rearrange axes for merged blocks
+        idx = idx.reshape(t, h // merge_size, merge_size, w // merge_size, merge_size)
+        idx = idx.permute(0, 1, 3, 2, 4).contiguous()
         idx = idx.flatten() + offset
 
         batch_indices.append(idx)
         offset += t * h * w
 
     return torch.cat(batch_indices, dim=0)
+
 
 
 def merge_to_flatten_idx(grid_thw: torch.Tensor, merge_size: int) -> torch.Tensor:
