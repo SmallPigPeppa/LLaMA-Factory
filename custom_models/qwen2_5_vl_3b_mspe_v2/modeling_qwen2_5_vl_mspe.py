@@ -1945,7 +1945,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             image_grid_thw_dict: Optional[Dict[int, torch.Tensor]] = None,
     ):
         pixel_values_dict = {k: v.type(self.visual.dtype) for k, v in pixel_values_dict.items()}
-        image_embeds = self.visual(pixel_values_dict, grid_thw=image_grid_thw_dict)
+        image_embeds = self.visual(pixel_values_dict, image_grid_thw_dict)
         return image_embeds
 
     @auto_docstring
