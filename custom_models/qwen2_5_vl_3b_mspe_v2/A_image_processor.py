@@ -47,35 +47,78 @@ from transformers.image_utils import (
 from transformers.utils import TensorType, logging
 from transformers.video_utils import VideoInput, make_batched_videos
 
-
 logger = logging.get_logger(__name__)
 
+
+# def smart_resize(
+#     height: int, width: int, factor: int = 28, min_pixels: int = 56 * 56, max_pixels: int = 14 * 14 * 4 * 1280
+# ):
+#     """Rescales the image so that the following conditions are met:
+#
+#     1. Both dimensions (height and width) are divisible by 'factor'.
+#
+#     2. The total number of pixels is within the range ['min_pixels', 'max_pixels'].
+#
+#     3. The aspect ratio of the image is maintained as closely as possible.
+#
+#     """
+#     if height < factor or width < factor:
+#         raise ValueError(f"height:{height} and width:{width} must be larger than factor:{factor}")
+#     elif max(height, width) / min(height, width) > 200:
+#         raise ValueError(
+#             f"absolute aspect ratio must be smaller than 200, got {max(height, width) / min(height, width)}"
+#         )
+#     h_bar = round(height / factor) * factor
+#     w_bar = round(width / factor) * factor
+#     if h_bar * w_bar > max_pixels:
+#         beta = math.sqrt((height * width) / max_pixels)
+#         h_bar = math.floor(height / beta / factor) * factor
+#         w_bar = math.floor(width / beta / factor) * factor
+#     elif h_bar * w_bar < min_pixels:
+#         beta = math.sqrt(min_pixels / (height * width))
+#         h_bar = math.ceil(height * beta / factor) * factor
+#         w_bar = math.ceil(width * beta / factor) * factor
+#     return h_bar, w_bar
+
+
 def smart_resize(
-    height: int, width: int, factor: int = 28, min_pixels: int = 56 * 56, max_pixels: int = 14 * 14 * 4 * 1280
+        height: int,
+        width: int,
+        factor: int = 28,
+        min_pixels: int = 56 * 56,
+        max_pixels: int = 980 * 980
 ):
-    """Rescales the image so that the following conditions are met:
-
-    1. Both dimensions (height and width) are divisible by 'factor'.
-
-    2. The total number of pixels is within the range ['min_pixels', 'max_pixels'].
-
-    3. The aspect ratio of the image is maintained as closely as possible.
-
     """
+    Rescales the image so that:
+      1. Both dimensions are divisible by 'factor'.
+      2. Total pixels within ['min_pixels', 'max_pixels'].
+      3. Aspect ratio is preserved as much as possible.
+      4. If any side < factor, first upscale proportionally to >= factor.
+    """
+    # If any side < factor, upscale so both >= factor
+    if height < factor or width < factor:
+        scale = max(factor / height, factor / width)
+        height = math.ceil(height * scale)
+        width = math.ceil(width * scale)
+
+    # Extremely distorted aspect ratios are not allowed
     if max(height, width) / min(height, width) > 200:
-        raise ValueError(
-            f"absolute aspect ratio must be smaller than 200, got {max(height, width) / min(height, width)}"
-        )
+        raise ValueError(f"absolute aspect ratio must be < 200, got {max(height, width) / min(height, width)}")
+
+    # Round to nearest multiple of factor
     h_bar = round(height / factor) * factor
     w_bar = round(width / factor) * factor
+
+    # Clamp total pixels
     if h_bar * w_bar > max_pixels:
         beta = math.sqrt((height * width) / max_pixels)
-        h_bar = max(factor, math.floor(height / beta / factor) * factor)
-        w_bar = max(factor, math.floor(width / beta / factor) * factor)
+        h_bar = math.floor(height / beta / factor) * factor
+        w_bar = math.floor(width / beta / factor) * factor
     elif h_bar * w_bar < min_pixels:
         beta = math.sqrt(min_pixels / (height * width))
         h_bar = math.ceil(height * beta / factor) * factor
         w_bar = math.ceil(width * beta / factor) * factor
+
     return h_bar, w_bar
 
 
@@ -86,7 +129,7 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
     Args:
         do_resize (`bool`, *optional*, defaults to `True`):
             Whether to resize the image's (height, width) dimensions.
-        size (`dict[str, int]`, *optional*, defaults to `{"shortest_edge": 56 * 56, "longest_edge": 28 * 28 * 1280}`):
+        size (`Dict[str, int]`, *optional*, defaults to `{"shortest_edge": 56 * 56, "longest_edge": 28 * 28 * 1280}`):
             Size of the image after resizing. `shortest_edge` and `longest_edge` keys must be present.
         resample (`PILImageResampling`, *optional*, defaults to `Resampling.BICUBIC`):
             Resampling filter to use when resizing the image.
@@ -96,9 +139,9 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
             Scale factor to use if rescaling the image.
         do_normalize (`bool`, *optional*, defaults to `True`):
             Whether to normalize the image.
-        image_mean (`float` or `list[float]`, *optional*, defaults to `[0.48145466, 0.4578275, 0.40821073]`):
+        image_mean (`float` or `List[float]`, *optional*, defaults to `[0.48145466, 0.4578275, 0.40821073]`):
             Mean to use if normalizing the image. This is a float or list of floats for each channel in the image.
-        image_std (`float` or `list[float]`, *optional*, defaults to `[0.26862954, 0.26130258, 0.27577711]`):
+        image_std (`float` or `List[float]`, *optional*, defaults to `[0.26862954, 0.26130258, 0.27577711]`):
             Standard deviation to use if normalizing the image. This is a float or list of floats for each channel in the image.
         do_convert_rgb (`bool`, *optional*, defaults to `True`):
             Whether to convert the image to RGB.
@@ -117,22 +160,22 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
     model_input_names = ["pixel_values", "image_grid_thw", "pixel_values_videos", "video_grid_thw"]
 
     def __init__(
-        self,
-        do_resize: bool = True,
-        size: Optional[dict[str, int]] = None,
-        resample: PILImageResampling = PILImageResampling.BICUBIC,
-        do_rescale: bool = True,
-        rescale_factor: Union[int, float] = 1 / 255,
-        do_normalize: bool = True,
-        image_mean: Optional[Union[float, list[float]]] = None,
-        image_std: Optional[Union[float, list[float]]] = None,
-        do_convert_rgb: bool = True,
-        min_pixels: Optional[int] = None,
-        max_pixels: Optional[int] = None,
-        patch_size: int = 14,
-        temporal_patch_size: int = 2,
-        merge_size: int = 2,
-        **kwargs,
+            self,
+            do_resize: bool = True,
+            size: Optional[Dict[str, int]] = None,
+            resample: PILImageResampling = PILImageResampling.BICUBIC,
+            do_rescale: bool = True,
+            rescale_factor: Union[int, float] = 1 / 255,
+            do_normalize: bool = True,
+            image_mean: Optional[Union[float, List[float]]] = None,
+            image_std: Optional[Union[float, List[float]]] = None,
+            do_convert_rgb: bool = True,
+            min_pixels: Optional[int] = None,
+            max_pixels: Optional[int] = None,
+            patch_size: int = 14,
+            temporal_patch_size: int = 2,
+            merge_size: int = 2,
+            **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         if size is not None and ("shortest_edge" not in size or "longest_edge" not in size):
@@ -162,22 +205,22 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
         self.do_convert_rgb = do_convert_rgb
 
     def _preprocess(
-        self,
-        images: Union[ImageInput, VideoInput],
-        do_resize: Optional[bool] = None,
-        size: Optional[dict[str, int]] = None,
-        resample: PILImageResampling = None,
-        do_rescale: Optional[bool] = None,
-        rescale_factor: Optional[float] = None,
-        do_normalize: Optional[bool] = None,
-        image_mean: Optional[Union[float, list[float]]] = None,
-        image_std: Optional[Union[float, list[float]]] = None,
-        patch_size: Optional[int] = None,
-        temporal_patch_size: Optional[int] = None,
-        merge_size: Optional[int] = None,
-        do_convert_rgb: Optional[bool] = None,
-        data_format: Optional[ChannelDimension] = ChannelDimension.FIRST,
-        input_data_format: Optional[Union[str, ChannelDimension]] = None,
+            self,
+            images: Union[ImageInput, VideoInput],
+            do_resize: Optional[bool] = None,
+            size: Optional[Dict[str, int]] = None,
+            resample: PILImageResampling = None,
+            do_rescale: Optional[bool] = None,
+            rescale_factor: Optional[float] = None,
+            do_normalize: Optional[bool] = None,
+            image_mean: Optional[Union[float, List[float]]] = None,
+            image_std: Optional[Union[float, List[float]]] = None,
+            patch_size: Optional[int] = None,
+            temporal_patch_size: Optional[int] = None,
+            merge_size: Optional[int] = None,
+            do_convert_rgb: Optional[bool] = None,
+            data_format: Optional[ChannelDimension] = ChannelDimension.FIRST,
+            input_data_format: Optional[Union[str, ChannelDimension]] = None,
     ):
         """
         Preprocess an image or batch of images. Copy of the `preprocess` method from `CLIPImageProcessor`.
@@ -185,11 +228,11 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
         Args:
             images (`ImageInput`):
                 Image or batch of images to preprocess. Expects pixel values ranging from 0 to 255. If pixel values range from 0 to 1, set `do_rescale=False`.
-            vision_info (`list[Dict]`, *optional*):
+            vision_info (`List[Dict]`, *optional*):
                 Optional list of dictionaries containing additional information about vision inputs.
             do_resize (`bool`, *optional*, defaults to `self.do_resize`):
                 Whether to resize the image.
-            size (`dict[str, int]`, *optional*, defaults to `self.size`):
+            size (`Dict[str, int]`, *optional*, defaults to `self.size`):
                 Size of the image after resizing. `shortest_edge` and `longest_edge` keys must be present.
             resample (`PILImageResampling`, *optional*, defaults to `self.resample`):
                 Resampling filter to use if resizing the image. This can be one of the `PILImageResampling` enums.
@@ -199,9 +242,9 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
                 Scale factor to use if rescaling the image.
             do_normalize (`bool`, *optional*, defaults to `self.do_normalize`):
                 Whether to normalize the image.
-            image_mean (`float` or `list[float]`, *optional*, defaults to `self.image_mean`):
+            image_mean (`float` or `List[float]`, *optional*, defaults to `self.image_mean`):
                 Mean to use if normalizing the image. Can be a float or a list of floats corresponding to the number of channels in the image.
-            image_std (`float` or `list[float]`, *optional*, defaults to `self.image_std`):
+            image_std (`float` or `List[float]`, *optional*, defaults to `self.image_std`):
                 Standard deviation to use if normalizing the image. Can be a float or a list of floats corresponding to the number of channels in the image.
             patch_size (`int`, *optional*, defaults to `self.patch_size`):
                 The spatial patch size of the vision encoder.
@@ -244,10 +287,12 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
         processed_images = []
         for image in images:
             if do_resize:
+                # import pdb;pdb.set_trace()
                 resized_height, resized_width = smart_resize(
                     height,
                     width,
-                    factor=patch_size * merge_size,
+                    # x2 for mspe
+                    factor=patch_size * merge_size * 2,
                     min_pixels=size["shortest_edge"],
                     max_pixels=size["longest_edge"],
                 )
@@ -296,26 +341,26 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
         return flatten_patches, (grid_t, grid_h, grid_w)
 
     def preprocess(
-        self,
-        images: ImageInput,
-        videos: VideoInput = None,
-        do_resize: Optional[bool] = None,
-        size: Optional[dict[str, int]] = None,
-        min_pixels: Optional[int] = None,
-        max_pixels: Optional[int] = None,
-        resample: PILImageResampling = None,
-        do_rescale: Optional[bool] = None,
-        rescale_factor: Optional[float] = None,
-        do_normalize: Optional[bool] = None,
-        image_mean: Optional[Union[float, list[float]]] = None,
-        image_std: Optional[Union[float, list[float]]] = None,
-        patch_size: Optional[int] = None,
-        temporal_patch_size: Optional[int] = None,
-        merge_size: Optional[int] = None,
-        do_convert_rgb: Optional[bool] = None,
-        return_tensors: Optional[Union[str, TensorType]] = None,
-        data_format: Optional[ChannelDimension] = ChannelDimension.FIRST,
-        input_data_format: Optional[Union[str, ChannelDimension]] = None,
+            self,
+            images: ImageInput,
+            videos: VideoInput = None,
+            do_resize: Optional[bool] = None,
+            size: Optional[Dict[str, int]] = None,
+            min_pixels: Optional[int] = None,
+            max_pixels: Optional[int] = None,
+            resample: PILImageResampling = None,
+            do_rescale: Optional[bool] = None,
+            rescale_factor: Optional[float] = None,
+            do_normalize: Optional[bool] = None,
+            image_mean: Optional[Union[float, List[float]]] = None,
+            image_std: Optional[Union[float, List[float]]] = None,
+            patch_size: Optional[int] = None,
+            temporal_patch_size: Optional[int] = None,
+            merge_size: Optional[int] = None,
+            do_convert_rgb: Optional[bool] = None,
+            return_tensors: Optional[Union[str, TensorType]] = None,
+            data_format: Optional[ChannelDimension] = ChannelDimension.FIRST,
+            input_data_format: Optional[Union[str, ChannelDimension]] = None,
     ):
         """
         Args:
@@ -327,7 +372,7 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
                 passing in videos with pixel values between 0 and 1, set `do_rescale=False`.
             do_resize (`bool`, *optional*, defaults to `self.do_resize`):
                 Whether to resize the image.
-            size (`dict[str, int]`, *optional*, defaults to `self.size`):
+            size (`Dict[str, int]`, *optional*, defaults to `self.size`):
                 Size of the image after resizing. Shortest edge of the image is resized to size["shortest_edge"], with
                 the longest edge resized to keep the input aspect ratio.
             resample (`int`, *optional*, defaults to `self.resample`):
@@ -339,9 +384,9 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
                 Rescale factor to rescale the image by if `do_rescale` is set to `True`.
             do_normalize (`bool`, *optional*, defaults to `self.do_normalize`):
                 Whether to normalize the image.
-            image_mean (`float` or `list[float]`, *optional*, defaults to `self.image_mean`):
+            image_mean (`float` or `List[float]`, *optional*, defaults to `self.image_mean`):
                 Image mean to use for normalization. Only has an effect if `do_normalize` is set to `True`.
-            image_std (`float` or `list[float]`, *optional*, defaults to `self.image_std`):
+            image_std (`float` or `List[float]`, *optional*, defaults to `self.image_std`):
                 Image standard deviation to use for normalization. Only has an effect if `do_normalize` is set to
                 `True`.
             min_pixels (`int`, *optional*, defaults to `self.min_pixels`):
@@ -403,7 +448,6 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
         do_convert_rgb = do_convert_rgb if do_convert_rgb is not None else self.do_convert_rgb
 
         if images is not None:
-            images = self.fetch_images(images)
             images = make_flat_list_of_images(images)
 
         if images is not None and not valid_images(images):
@@ -448,7 +492,6 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
             pixel_values = np.array(pixel_values)
             vision_grid_thws = np.array(vision_grid_thws)
             data.update({"pixel_values": pixel_values, "image_grid_thw": vision_grid_thws})
-
 
             # TODO：for MSPE
             pixel_values_dict, vision_grid_thws_dict = {}, {}
@@ -524,31 +567,5 @@ class Qwen2VLImageProcessorMSPE(BaseImageProcessor):
 
         return BatchFeature(data=data, tensor_type=return_tensors)
 
-    def get_number_of_image_patches(self, height: int, width: int, images_kwargs=None):
-        """
-        A utility that returns number of image patches for a given image size.
 
-        Args:
-            height (`int`):
-                Height of the input image.
-            width (`int`):
-                Width of the input image.
-            images_kwargs (`dict`, *optional*)
-                Any kwargs to override defaults of the image processor.
-        Returns:
-            `int`: Number of image patches per image.
-        """
-        min_pixels = images_kwargs["min_pixels"] if "min_pixels" in images_kwargs else self.size["shortest_edge"]
-        max_pixels = images_kwargs["max_pixels"] if "max_pixels" in images_kwargs else self.size["longest_edge"]
-        patch_size = images_kwargs.get("patch_size", self.patch_size)
-        merge_size = images_kwargs.get("merge_size", self.merge_size)
-
-        factor = patch_size * merge_size
-        resized_height, resized_width = smart_resize(
-            height, width, factor, min_pixels=min_pixels, max_pixels=max_pixels
-        )
-        grid_h, grid_w = resized_height // patch_size, resized_width // patch_size
-        return grid_h * grid_w
-
-
-__all__ = ["Qwen2VLImageProcessorMSPE"]
+__all__ = ["Qwen2VLImageProcessor"]
