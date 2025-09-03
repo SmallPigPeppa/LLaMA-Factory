@@ -2,6 +2,8 @@ import torch
 import torch.nn.functional as F
 from typing import Tuple
 
+from s_editckpt_mspe71428 import patch_size
+
 
 def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spatial_merge_unit, spatial_merge_size):
     # compute scale factor
@@ -92,23 +94,22 @@ def split_to_window(
 
                 win_thw.append((sub.size(0), sub.size(1), sub.size(2)))
                 win_coords = torch.stack([
-                        sub_imgs.reshape(-1),
-                        sub_ts.reshape(-1),
-                        sub_hs.reshape(-1),
-                        sub_ws.reshape(-1)
-                    ], dim=1)
+                    sub_imgs.reshape(-1),
+                    sub_ts.reshape(-1),
+                    sub_hs.reshape(-1),
+                    sub_ws.reshape(-1)
+                ], dim=1)
                 # import pdb;pdb.set_trace()
-                idx_merge = flatten_to_merge_idx(grid_thw=torch.tensor([sub.size(0), sub.size(1), sub.size(2)]).unsqueeze(0), merge_size=2)
+                idx_merge = flatten_to_merge_idx(
+                    grid_thw=torch.tensor([sub.size(0), sub.size(1), sub.size(2)]).unsqueeze(0), merge_size=2)
                 coord_chunks.append(win_coords[idx_merge])
 
     coords = torch.cat(coord_chunks, dim=0)  # [N_patch, 4]
-    import pdb;pdb.set_trace()
+    # import pdb;pdb.set_trace()
     # idx_merge = flatten_to_merge_idx(grid_thw=img_thw, merge_size=2)
     # coords = coords[idx_merge]
 
     win_thw = img_thw.new_tensor(win_thw)  # [B_window, 3]
-
-
 
     return win_thw, coords
 
@@ -184,6 +185,68 @@ def recompose_windows(
     token_itxy = torch.cat(token_itxy_list, dim=0)  # [N, 4]
 
     return hidden_states, position_embeddings, window_index, win_cu_seq, token_itxy
+
+
+def recompose_windows_v2(
+        win_adp_ps,
+        win_feat_dict,
+        pos_emb_dict,
+        win_cu_dict,
+        win_coord_dict,
+):
+    win_feat_list = []
+    pos_emb_list = []
+    win_idx_list = []
+    win_coord_list = []
+    win_cu_seq = [0]
+
+    # 遍历每个窗口及其对应的patch size
+    for idx, ps in enumerate(win_adp_ps):
+        # 获取当前窗口的起止位置
+        start = win_cu_dict[ps][idx]
+        end = win_cu_dict[ps][idx + 1]
+
+        # 提取对应窗口的数据
+        # win_feat_list.append(win_feat_dict[ps][start:end])
+
+        win_feat_ps = win_feat_dict[ps][start:end]
+        L = win_feat_ps.size(0)
+        # 其他特征对齐后加权
+        others = []
+        for k in win_feat_dict:
+            if k == ps: continue
+            ss, ee = win_cu_dict[k][idx], win_cu_dict[k][idx + 1]
+            feat = win_feat_dict[k][ss:ee]
+            feat = feat[:L] if feat.size(0) >= L else F.pad(feat, (0, 0, 0, L - feat.size(0)))
+            others.append(feat)
+        if others:
+            win_feat_ps = win_feat_ps + 0. * torch.mean(torch.stack(others), dim=0)
+        win_feat_list.append(win_feat_ps)
+
+        pos_emb_list.append((
+            pos_emb_dict[ps][0][start:end],
+            pos_emb_dict[ps][1][start:end]
+        ))
+        # unified to pixel coord
+        coord = win_coord_dict[ps][start:end]
+        coord[:, -2:] *= patch_size
+        win_idx_list.append(coord)
+
+        # 更新累计长度
+        win_cu_seq.append(win_cu_seq[-1] + (end - start))
+
+    # 拼接结果
+    hidden_states = torch.cat(win_feat_list, dim=0)
+    position_embeddings_cos = torch.cat([emb[0] for emb in pos_emb_list], dim=0)
+    position_embeddings_sin = torch.cat([emb[1] for emb in pos_emb_list], dim=0)
+    # import pdb;pdb.set_trace()
+    win_cu_seq = torch.tensor(win_cu_seq, dtype=win_cu_seq[-1].dtype,device=win_cu_seq[-1].device)
+    position_embeddings = (position_embeddings_cos, position_embeddings_sin)
+
+    # for token itxy
+    win_coord = torch.cat(win_coord_list, dim=0)  # [N, 4]
+
+    return hidden_states, position_embeddings, win_cu_seq, win_coord
 
 
 def repatchify(
@@ -276,7 +339,6 @@ def flatten_to_merge_idx(grid_thw: torch.Tensor, merge_size: int) -> torch.Tenso
         offset += t * h * w
 
     return torch.cat(batch_indices, dim=0)
-
 
 
 def merge_to_flatten_idx(grid_thw: torch.Tensor, merge_size: int) -> torch.Tensor:

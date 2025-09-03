@@ -59,9 +59,11 @@ logger = logging.get_logger(__name__)
 
 import random
 from .A_utilsv2 import update_position_ids, update_ids_masks_labels, merge_to_flatten_idx, repatchify, \
-    flatten_to_merge_idx, recompose_windows, split_to_window
+    flatten_to_merge_idx, recompose_windows, split_to_window, recompose_windows_v2
 from .A_adptive import random_sample_ps, random_window_ps
 from .score_mspe_714 import get_adp_win_patchsize, get_infer_adp_win_patchsize
+import numpy as np
+from functools import reduce
 
 
 class Qwen2_5_VLMLP(nn.Module):
@@ -251,8 +253,6 @@ class Qwen2_5_VisionPatchEmbedFlexi(nn.Module):
         ).view(-1, self.embed_dim)
 
         return hidden_states
-
-
 
 
 class Qwen2_5_VisionRotaryEmbedding(nn.Module):
@@ -732,7 +732,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         return hidden_states
 
-    def forward(self, pixel_values_dict: Dict[int, torch.Tensor], grid_thw_dict: Optional[Dict[int, torch.Tensor]]) -> [torch.Tensor, torch.Tensor]:
+    def forward(self, pixel_values_dict: Dict[int, torch.Tensor], grid_thw_dict: Optional[Dict[int, torch.Tensor]]) -> [
+        torch.Tensor, torch.Tensor]:
         """
         Args:
             pixel_values_dict (`torch.Tensor` of shape `(seq_len, hidden_size)`):
@@ -752,6 +753,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         win_cu_dict = {}
         pos_emb_dict = {}
         win_thw_dict = {}
+        win_coord_dict = {}
 
         # import pdb;pdb.set_trace()
 
@@ -780,17 +782,20 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             cu = torch.unique_consecutive(cu)
             win_idx_dict[ps] = win
             win_cu_dict[ps] = cu
-            win_thw_dict[ps], _ = split_to_window(img_thw=img_thw_dict[ps], win_size=112, patch_size=ps)
+            win_thw_dict[ps], win_coord_dict[ps] = split_to_window(img_thw=img_thw_dict[ps], win_size=112,
+                                                                   patch_size=ps)
 
         # import pdb;pdb.set_trace()
 
         # 2) reorder win idx with merge
         for ps in patch_sizes:
             seq_len, _ = win_feat_dict[ps].size()
-            win_feat_dict[ps] = win_feat_dict[ps].reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
+            win_feat_dict[ps] = win_feat_dict[ps].reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit,
+                                                          -1)
             win_feat_dict[ps] = win_feat_dict[ps][win_idx_dict[ps], :, :]
             win_feat_dict[ps] = win_feat_dict[ps].reshape(seq_len, -1)
-            rotary_pos_emb_dict[ps] = rotary_pos_emb_dict[ps].reshape(seq_len // self.spatial_merge_unit,self.spatial_merge_unit, -1)
+            rotary_pos_emb_dict[ps] = rotary_pos_emb_dict[ps].reshape(seq_len // self.spatial_merge_unit,
+                                                                      self.spatial_merge_unit, -1)
             rotary_pos_emb_dict[ps] = rotary_pos_emb_dict[ps][win_idx_dict[ps], :, :]
             rotary_pos_emb_dict[ps] = rotary_pos_emb_dict[ps].reshape(seq_len, -1)
             emb = torch.cat((rotary_pos_emb_dict[ps], rotary_pos_emb_dict[ps]), dim=-1)
@@ -804,16 +809,12 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         print('window_adp_ps:', win_adp_ps)
         # print('diffs:', diffs)
-
-        hidden_states, position_embeddings, window_index, cu_window_seqlens, token_itxy = recompose_windows(
+        hidden_states, position_embeddings, win_cu, win_coord = recompose_windows_v2(
             win_adp_ps,
             win_feat_dict,
             pos_emb_dict,
-            win_idx_dict,
             win_cu_dict,
-            img_thw_dict,
-            self.spatial_merge_unit,
-            self.spatial_merge_size
+            win_coord_dict,
         )
 
         # update cu seq lens
@@ -823,19 +824,19 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             dtype=img_thw_tmp.dtype if torch.jit.is_tracing() else torch.int32,
         )
         img_cu_tmp = F.pad(img_cu_tmp, (1, 0), value=0)
-        win_cu_tmp= next(iter(win_cu_dict.values())).tolist()
+        win_cu_tmp = next(iter(win_cu_dict.values())).tolist()
 
-        cu_seqlens = [cu_window_seqlens[win_cu_tmp.index(seq)] for seq in img_cu_tmp]
-        cu_seqlens = torch.tensor(cu_seqlens, device=img_cu_tmp.device, dtype=img_cu_tmp.dtype)
+        img_cu = [win_cu[win_cu_tmp.index(seq)] for seq in img_cu_tmp]
+        img_cu = torch.tensor(img_cu, device=img_cu_tmp.device, dtype=img_cu_tmp.dtype)
 
         # import pdb;pdb.set_trace()
 
         # window attention
         for layer_num, blk in enumerate(self.blocks):
             if layer_num in self.fullatt_block_indexes:
-                cu_seqlens_now = cu_seqlens
+                cu_seqlens_now = img_cu
             else:
-                cu_seqlens_now = cu_window_seqlens
+                cu_seqlens_now = win_cu
             if self.gradient_checkpointing and self.training:
                 hidden_states = self._gradient_checkpointing_func(
                     blk.__call__, hidden_states, cu_seqlens_now, None, position_embeddings
@@ -844,17 +845,24 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
                 hidden_states = blk(hidden_states, cu_seqlens=cu_seqlens_now, position_embeddings=position_embeddings)
 
         hidden_states = self.merger(hidden_states)
-        reverse_indices = torch.argsort(window_index)
-        hidden_states = hidden_states[reverse_indices, :]
-        token_itxy = token_itxy[reverse_indices]
-        I_all = token_itxy[:, 0]
-        txy_all = token_itxy[:, 1:]  # [N, 3]
-        unique_I = I_all.unique(sorted=True)
-        token_itxy = [txy_all[I_all == I] for I in unique_I]
-        # import pdb;pdb.set_trace()
+        seq_len, _ = win_coord.size()
+        coord_merge = win_coord.view(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)[:, 0, :]
+        gcd_val = reduce(torch.gcd, coord_merge[:, -2:].flatten())
+        coord_merge[:, -2:] //= gcd_val
 
-        # import pdb; pdb.set_trace()
-        return hidden_states, token_itxy
+        coord_np = coord_merge.cpu().numpy()
+
+        sorted_idx = np.lexsort((coord_np[:, 3], coord_np[:, 2], coord_np[:, 1], coord_np[:, 0]))
+        sorted_idx = torch.from_numpy(sorted_idx).to(coord_merge.device)
+        hidden_states = hidden_states[sorted_idx]
+        coord_merge = coord_merge[sorted_idx]
+
+        coord_i = coord_merge[:, 0]
+        coord_thw = coord_merge[:, 1:]  # [N, 3]
+        unique_i = coord_i.unique(sorted=True)
+        coord_list = [coord_thw[coord_i == I] for I in unique_i]
+
+        return hidden_states, coord_list
 
 
 @dataclass
@@ -2010,7 +2018,7 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
                     14: image_grid_thw_ps14,
                     28: image_grid_thw_ps28,
                 }
-                image_embeds, token_itxy = self.get_image_features(pixel_values_dict,image_grid_thw_dict)
+                image_embeds, token_itxy = self.get_image_features(pixel_values_dict, image_grid_thw_dict)
 
                 # import pdb;pdb.set_trace()
                 # position_ids = update_position_ids(position_ids=position_ids, token_itxy=token_itxy, ids=input_ids,img_id=self.config.image_token_id)
