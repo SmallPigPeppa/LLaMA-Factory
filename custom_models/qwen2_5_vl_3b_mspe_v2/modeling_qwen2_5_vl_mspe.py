@@ -2016,15 +2016,14 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
                 image_embeds, token_itxy = self.get_image_features(pixel_values_dict,image_grid_thw_dict)
 
                 # import pdb;pdb.set_trace()
-                position_ids = update_position_ids(position_ids=position_ids, token_itxy=token_itxy, ids=input_ids,
-                                                   img_id=self.config.image_token_id)
-                input_ids, attention_mask, labels = update_ids_masks_labels(
-                    ids=input_ids,
-                    att_masks=attention_mask,
-                    labels=labels,
-                    img_id=self.config.image_token_id,
-                    num_image_token=[len(i) for i in token_itxy]
-                )
+                # position_ids = update_position_ids(position_ids=position_ids, token_itxy=token_itxy, ids=input_ids,img_id=self.config.image_token_id)
+                # input_ids, attention_mask, labels = update_ids_masks_labels(
+                #     ids=input_ids,
+                #     att_masks=attention_mask,
+                #     labels=labels,
+                #     img_id=self.config.image_token_id,
+                #     num_image_token=[len(i) for i in token_itxy]
+                # )
                 inputs_embeds = self.get_input_embeddings()(input_ids)
                 # inputs_embeds = self.get_input_embeddings()(input_ids)
                 # other params: past_key_values, use_cache, cache_position is None
