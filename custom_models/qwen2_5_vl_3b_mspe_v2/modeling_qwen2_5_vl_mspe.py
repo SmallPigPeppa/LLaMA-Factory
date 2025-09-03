@@ -847,13 +847,17 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         hidden_states = self.merger(hidden_states)
         seq_len, _ = win_coord.size()
         coord_merge = win_coord.view(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)[:, 0, :]
+        import pdb;pdb.set_trace()
+
+
         gcd_val = reduce(torch.gcd, coord_merge[:, -2:].flatten())
         coord_merge[:, -2:] //= gcd_val
 
         coord_np = coord_merge.cpu().numpy()
-
         sorted_idx = np.lexsort((coord_np[:, 3], coord_np[:, 2], coord_np[:, 1], coord_np[:, 0]))
         sorted_idx = torch.from_numpy(sorted_idx).to(coord_merge.device)
+
+
         hidden_states = hidden_states[sorted_idx]
         coord_merge = coord_merge[sorted_idx]
 
