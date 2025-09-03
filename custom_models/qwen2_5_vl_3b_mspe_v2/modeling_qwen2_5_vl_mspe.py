@@ -787,13 +787,10 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         # 2) reorder win idx with merge
         for ps in patch_sizes:
             seq_len, _ = win_feat_dict[ps].size()
-            win_feat_dict[ps] = win_feat_dict[ps].reshape(
-                seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
+            win_feat_dict[ps] = win_feat_dict[ps].reshape(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)
             win_feat_dict[ps] = win_feat_dict[ps][win_idx_dict[ps], :, :]
             win_feat_dict[ps] = win_feat_dict[ps].reshape(seq_len, -1)
-            rotary_pos_emb_dict[ps] = rotary_pos_emb_dict[ps].reshape(
-                seq_len // self.spatial_merge_unit,
-                self.spatial_merge_unit, -1)
+            rotary_pos_emb_dict[ps] = rotary_pos_emb_dict[ps].reshape(seq_len // self.spatial_merge_unit,self.spatial_merge_unit, -1)
             rotary_pos_emb_dict[ps] = rotary_pos_emb_dict[ps][win_idx_dict[ps], :, :]
             rotary_pos_emb_dict[ps] = rotary_pos_emb_dict[ps].reshape(seq_len, -1)
             emb = torch.cat((rotary_pos_emb_dict[ps], rotary_pos_emb_dict[ps]), dim=-1)

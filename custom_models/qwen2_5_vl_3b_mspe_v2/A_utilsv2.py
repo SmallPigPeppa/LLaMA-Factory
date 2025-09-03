@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from typing import  Tuple
+from typing import Tuple
 
 
 def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spatial_merge_unit, spatial_merge_size):
@@ -55,7 +55,6 @@ def scale_window_index(ps, min_ps, grid_thw_ps, window_index_ps, start, end, spa
     return scale_idx, token_itxy
 
 
-
 def split_to_window(
         img_thw: torch.Tensor,  # [B, 3], each row is (gt, gh, gw)
         win_size: int,
@@ -87,8 +86,8 @@ def split_to_window(
             for c in range(0, gw, win_token):
                 sub = grid[:, r:r + win_token, c:c + win_token]  # [gt, h_win, w_win]
                 sub_ts, sub_hs, sub_ws = ts[:, r:r + win_token, c:c + win_token], \
-                                         hs[:, r:r + win_token, c:c + win_token], \
-                                         ws[:, r:r + win_token, c:c + win_token]
+                    hs[:, r:r + win_token, c:c + win_token], \
+                    ws[:, r:r + win_token, c:c + win_token]
                 sub_imgs = imgs[:, r:r + win_token, c:c + win_token]
 
                 win_thw.append((sub.size(0), sub.size(1), sub.size(2)))
@@ -101,17 +100,15 @@ def split_to_window(
                     ], dim=1)
                 )
 
-
-    coords = torch.cat(coord_chunks, dim=0)
+    coords = torch.cat(coord_chunks, dim=0)  # [N_patch, 4]
+    idx_merge = flatten_to_merge_idx(grid_thw=img_thw, merge_size=2)
+    coords = coords[idx_merge]
 
     win_thw = img_thw.new_tensor(win_thw)  # [B_window, 3]
 
+    import pdb; pdb.set_trace()
+
     return win_thw, coords
-
-
-
-
-
 
 
 def recompose_windows(
@@ -158,13 +155,13 @@ def recompose_windows(
             win_feat_ps = win_feat_ps + 0. * torch.mean(torch.stack(others), dim=0)
         win_feat_list.append(win_feat_ps)
 
-
         pos_emb_list.append((
             pos_emb_dict[ps][0][start:end],
             pos_emb_dict[ps][1][start:end]
         ))
         # unified to min patchsize
-        new_idx, token_itxy = scale_window_index(ps, min_ps, grid_thw_dict, win_idx_dict, win_start, win_end, spatial_merge_unit, spatial_merge_size)
+        new_idx, token_itxy = scale_window_index(ps, min_ps, grid_thw_dict, win_idx_dict, win_start, win_end,
+                                                 spatial_merge_unit, spatial_merge_size)
         win_idx_list.append(new_idx)
         token_itxy_list.append(token_itxy)
 
@@ -178,7 +175,7 @@ def recompose_windows(
     # import pdb;pdb.set_trace()
     window_index = torch.cat(win_idx_list, dim=0)
     win_cu_seq = torch.tensor(win_cu_seq, dtype=win_cu_seq[-1].dtype,
-                                     device=win_cu_seq[-1].device)
+                              device=win_cu_seq[-1].device)
     position_embeddings = (position_embeddings_cos, position_embeddings_sin)
 
     # for token itxy
