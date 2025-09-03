@@ -276,7 +276,7 @@ def repatchify(
 #
 #     return torch.cat(batch_indices, dim=0)
 
-
+from einops import rearrange
 def flatten_to_merge_idx(grid_thw: torch.Tensor, merge_size: int) -> torch.Tensor:
     batch_size = grid_thw.size(0)
     batch_indices = []
