@@ -74,7 +74,7 @@ def pi_resize3d(
 
 # ======== 配置（按需改） ========
 CKPT_DIR = "/mnt/bn/liuwenzhuo-hl-data/Qwen/Qwen2.5-VL-3B-Instruct/"
-CKPT_DIR_MODIFIED = "/mnt/bn/liuwenzhuo-hl-data/Qwen/Qwen2.5-VL-3B-Instruct-flexi/"
+CKPT_DIR_MODIFIED = "/mnt/bn/liuwenzhuo-hl-data/Qwen/Qwen2.5-VL-3B-Instruct-mspe71428/"
 OUT_PATH = os.path.join(CKPT_DIR_MODIFIED, "model.safetensors")
 PATCH_SIZE = 12
 
@@ -97,11 +97,35 @@ for key, shard_name in weight_map.items():
     state_dict[key] = opened[shard_path].get_tensor(key)
 opened.clear()
 
-# ======== Step 1: 替换 patchifier 为多尺度 ========
-base_w_key = "visual.patch_embed.proj.weight"
-base_weight = state_dict[base_w_key]
-resized_weight = pi_resize3d(base_weight, target_size=PATCH_SIZE)
-state_dict[base_w_key] = resized_weight.clone()
+
+
+
+base_weight = state_dict["visual.patch_embed.proj.weight"]
+base_bias = state_dict["visual.patch_embed.proj.bias"]
+
+patch_sizes = [7, 14, 28]
+patch_sizes = sorted(patch_sizes)
+
+for idx, patch_size in enumerate(patch_sizes):
+    prefix = f"visual.patch_embed.patch_embed_seq.{idx}"
+
+    # Resize conv weight
+    resized_weight = pi_resize3d(base_weight, target_size=patch_size)
+    state_dict[f"{prefix}.proj.weight"] = resized_weight.clone()
+
+    # Copy bias
+    if base_bias is not None:
+        state_dict[f"{prefix}.proj.bias"] = base_bias.clone()
+
+
+# 删除旧的 patchifier 参数（可选）
+for key in [
+    "visual.patch_embed.proj.weight",
+    "visual.patch_embed.proj.bias",
+]:
+    state_dict.pop(key, None)
+
+
 
 # ======== 保存为单文件 safetensors + 新 index ========
 save_file(state_dict, OUT_PATH)

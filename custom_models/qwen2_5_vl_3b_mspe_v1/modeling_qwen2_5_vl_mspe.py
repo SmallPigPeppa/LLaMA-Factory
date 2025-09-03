@@ -26,7 +26,7 @@
 
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Sequence
 
 import torch
 import torch.nn as nn
@@ -61,7 +61,7 @@ import random
 from .A_utilsv2 import update_position_ids, update_ids_masks_labels, merge_to_flatten_idx, repatchify, \
     flatten_to_merge_idx, recompose_windows, split_to_window
 from .A_adptive import random_sample_ps, random_window_ps
-from .score_mspe_714 import get_adp_win_patchsize,get_infer_adp_win_patchsize
+from .score_mspe_714 import get_adp_win_patchsize, get_infer_adp_win_patchsize
 
 
 class Qwen2_5_VLMLP(nn.Module):
@@ -91,8 +91,7 @@ class Qwen2_5_VisionPatchEmbed(nn.Module):
         self.temporal_patch_size = temporal_patch_size
         self.in_channels = in_channels
         self.embed_dim = embed_dim
-
-        kernel_size = [temporal_patch_size, patch_size, patch_size]
+        kernel_size = (temporal_patch_size, patch_size, patch_size)
         self.proj = nn.Conv3d(in_channels, embed_dim, kernel_size=kernel_size, stride=kernel_size, bias=False)
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
@@ -102,6 +101,53 @@ class Qwen2_5_VisionPatchEmbed(nn.Module):
         )
         hidden_states = self.proj(hidden_states.to(dtype=target_dtype)).view(-1, self.embed_dim)
         return hidden_states
+
+
+class Qwen2_5_VisionPatchEmbedMSPE(nn.Module):
+    """
+    Multi-Scale Patch Embedding for Qwen2.5-VL
+    """
+
+    def __init__(
+            self,
+            temporal_patch_size: int = 2,
+            in_channels: int = 3,
+            embed_dim: int = 1152,
+            patch_size_seq: Sequence[int] = (7, 14),
+    ) -> None:
+        super().__init__()
+        self.in_channels = in_channels
+        self.embed_dim = embed_dim
+        self.temporal_patch_size = temporal_patch_size
+        self.patch_embed_seq = nn.ModuleList()
+        self.patch_size_seq: List[int] = []
+
+        for ps in sorted(patch_size_seq):
+            self.patch_embed_seq.append(
+                Qwen2_5_VisionPatchEmbed(
+                    patch_size=ps,
+                    temporal_patch_size=temporal_patch_size,
+                    in_channels=in_channels,
+                    embed_dim=embed_dim,
+                )
+            )
+            self.patch_size_seq.append(ps)
+
+    def forward(self, x: torch.Tensor, patch_size: int = 14) -> torch.Tensor:
+        B, C, T, H, W = x.view(-1, self.in_channels, self.temporal_patch_size, patch_size, patch_size).shape
+        out = 0
+        for i, embed in enumerate(self.patch_embed_seq):
+            if embed.patch_size == patch_size:
+                yi = embed(x)
+            else:
+                ps = self.patch_size_seq[i]
+                tp = self.temporal_patch_size
+                xi = torch.zeros(
+                    (B, C, tp, ps, ps), device=x.device, dtype=x.dtype
+                )
+                yi = embed(xi)
+            out = out + yi * (embed.patch_size == patch_size)
+        return out
 
 
 def to_2tuple(x: Union[int, Tuple[int, int], List[int]]) -> Tuple[int, int]:
@@ -173,6 +219,41 @@ def pi_resize3d(
 
 
 class Qwen2_5_VisionPatchEmbedFlexi(nn.Module):
+    def __init__(
+            self,
+            patch_size: int = 14,
+            temporal_patch_size: int = 2,
+            in_channels: int = 3,
+            embed_dim: int = 1152,
+    ) -> None:
+        super().__init__()
+        self.patch_size = patch_size
+        self.temporal_patch_size = temporal_patch_size
+        self.in_channels = in_channels
+        self.embed_dim = embed_dim
+        kernel_size = [temporal_patch_size, patch_size, patch_size]
+        self.proj = nn.Conv3d(in_channels, embed_dim, kernel_size=kernel_size, stride=kernel_size, bias=False)
+
+    def forward(self, hidden_states: torch.Tensor, patch_size: int = 14) -> torch.Tensor:
+        target_dtype = self.proj.weight.dtype
+        hidden_states = hidden_states.view(
+            -1, self.in_channels, self.temporal_patch_size, patch_size, patch_size
+        )
+        resized_weight = pi_resize3d(
+            conv_weight=self.proj.weight,
+            target_size=patch_size,
+            interpolation="bicubic",
+            antialias=True,
+        )
+        # hidden_states = self.proj(hidden_states.to(dtype=target_dtype)).view(-1, self.embed_dim)
+        hidden_states = F.conv3d(
+            hidden_states.to(dtype=target_dtype), resized_weight, bias=self.proj.bias, stride=patch_size
+        ).view(-1, self.embed_dim)
+
+        return hidden_states
+
+
+class Qwen2_5_VisionPatchEmbedMSPE(nn.Module):
     def __init__(
             self,
             patch_size: int = 14,
@@ -493,11 +574,12 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         self.window_size = config.window_size
         self.spatial_merge_unit = self.spatial_merge_size * self.spatial_merge_size
 
-        self.patch_embed = Qwen2_5_VisionPatchEmbedFlexi(
-            patch_size=config.patch_size,
+        self.patch_embed = Qwen2_5_VisionPatchEmbedMSPE(
+            # patch_size=config.patch_size,
             temporal_patch_size=config.temporal_patch_size,
             in_channels=config.in_channels,
             embed_dim=config.hidden_size,
+            patch_size_seq=(7, 14, 28)
         )
 
         head_dim = config.hidden_size // config.num_heads
@@ -695,14 +777,14 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             `torch.Tensor`: hidden_states.
         """
 
-        patch_sizes = [7,14]
+        patch_sizes = [7, 14]
         grid_thw_dict = {}
         win_feat_dict = {}
         rotary_pos_emb_dict = {}
         win_idx_dict = {}
         win_cu_dict = {}
         pos_emb_dict = {}
-        win_thw_dict={}
+        win_thw_dict = {}
 
         # import pdb;pdb.set_trace()
 
@@ -729,7 +811,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             cu = torch.unique_consecutive(cu)
             win_idx_dict[ps] = win
             win_cu_dict[ps] = cu
-            win_thw_dict[ps],_= split_to_window(img_thw=grid_thw_dict[ps], win_size=112, patch_size=ps)
+            win_thw_dict[ps], _ = split_to_window(img_thw=grid_thw_dict[ps], win_size=112, patch_size=ps)
 
         # import pdb;pdb.set_trace()
 
@@ -756,7 +838,6 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         print('window_adp_ps:', win_adp_ps)
         print('diffs:', diffs)
-
 
         hidden_states, position_embeddings, window_index, cu_window_seqlens, token_itxy = recompose_windows(
             win_adp_ps,
@@ -1942,7 +2023,8 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
                 # import pdb;pdb.set_trace()
                 image_embeds, token_itxy = self.get_image_features(pixel_values, image_grid_thw)
                 # import pdb;pdb.set_trace()
-                position_ids = update_position_ids(position_ids=position_ids, token_itxy=token_itxy, ids=input_ids,img_id=self.config.image_token_id)
+                position_ids = update_position_ids(position_ids=position_ids, token_itxy=token_itxy, ids=input_ids,
+                                                   img_id=self.config.image_token_id)
                 input_ids, attention_mask, labels = update_ids_masks_labels(
                     ids=input_ids,
                     att_masks=attention_mask,
