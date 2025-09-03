@@ -101,7 +101,7 @@ opened.clear()
 
 
 base_weight = state_dict["visual.patch_embed.proj.weight"]
-base_bias = state_dict["visual.patch_embed.proj.bias"]
+# base_bias = state_dict["visual.patch_embed.proj.bias"]
 
 patch_sizes = [7, 14, 28]
 patch_sizes = sorted(patch_sizes)
@@ -113,15 +113,15 @@ for idx, patch_size in enumerate(patch_sizes):
     resized_weight = pi_resize3d(base_weight, target_size=patch_size)
     state_dict[f"{prefix}.proj.weight"] = resized_weight.clone()
 
-    # Copy bias
-    if base_bias is not None:
-        state_dict[f"{prefix}.proj.bias"] = base_bias.clone()
+    # # Copy bias
+    # if base_bias is not None:
+    #     state_dict[f"{prefix}.proj.bias"] = base_bias.clone()
 
 
 # 删除旧的 patchifier 参数（可选）
 for key in [
     "visual.patch_embed.proj.weight",
-    "visual.patch_embed.proj.bias",
+    # "visual.patch_embed.proj.bias",
 ]:
     state_dict.pop(key, None)
 
