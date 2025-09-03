@@ -732,12 +732,12 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         return hidden_states
 
-    def forward(self, hidden_states: torch.Tensor, grid_thw: torch.Tensor) -> [torch.Tensor, torch.Tensor]:
+    def forward(self, pixel_values_dict: Dict[int, torch.Tensor], grid_thw_dict: Optional[Dict[int, torch.Tensor]]) -> [torch.Tensor, torch.Tensor]:
         """
         Args:
-            hidden_states (`torch.Tensor` of shape `(seq_len, hidden_size)`):
+            pixel_values_dict (`torch.Tensor` of shape `(seq_len, hidden_size)`):
                 The final hidden states of the model.
-            grid_thw (`torch.Tensor` of shape `(num_images_or_videos, 3)`):
+            grid_thw_dict (`torch.Tensor` of shape `(num_images_or_videos, 3)`):
                 The temporal, height and width of feature shape of each image in LLM.
 
         Returns:
@@ -745,7 +745,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         """
 
         patch_sizes = [7]
-        grid_thw_dict = {}
+        img_thw_dict = {}
         win_feat_dict = {}
         rotary_pos_emb_dict = {}
         win_idx_dict = {}
@@ -757,28 +757,30 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         # 1) initial
         for ps in patch_sizes:
-            m2f = merge_to_flatten_idx(grid_thw=grid_thw, merge_size=self.spatial_merge_size)
-            hidden_states_rep = hidden_states[m2f]
-            hidden_states_rep, grid_thw_dict[ps] = repatchify(
-                hidden_states=hidden_states_rep,
-                grid_thw=grid_thw,
-                old_patch_size=self.patch_size,
-                new_patch_size=ps
-            )
-            f2m = flatten_to_merge_idx(grid_thw=grid_thw_dict[ps], merge_size=self.spatial_merge_size)
-            win_feat_dict[ps] = hidden_states_rep[f2m]
-            win_feat_dict[ps] = self.patch_embed(win_feat_dict[ps], patch_size=ps)
-            rotary_pos_emb_dict[ps] = self.rot_pos_emb(grid_thw_dict[ps])
-            win, cu = self.get_window_index(grid_thw_dict[ps], patch_size=ps)
+            # m2f = merge_to_flatten_idx(grid_thw=grid_thw, merge_size=self.spatial_merge_size)
+            # hidden_states_rep = hidden_states[m2f]
+            # hidden_states_rep, grid_thw_dict[ps] = repatchify(
+            #     hidden_states=hidden_states_rep,
+            #     grid_thw=grid_thw,
+            #     old_patch_size=self.patch_size,
+            #     new_patch_size=ps
+            # )
+            # f2m = flatten_to_merge_idx(grid_thw=grid_thw_dict[ps], merge_size=self.spatial_merge_size)
+            img_thw_dict[ps] = grid_thw_dict[ps]
+            win_feat_dict[ps] = self.patch_embed(pixel_values_dict[ps], patch_size=ps)
+            rotary_pos_emb_dict[ps] = self.rot_pos_emb(img_thw_dict[ps])
+            win, cu = self.get_window_index(img_thw_dict[ps], patch_size=ps)
             cu = torch.tensor(
                 cu,
-                device=hidden_states.device,
-                dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
+                # device=hidden_states.device,
+                device=pixel_values_dict[ps].device,
+                # dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
+                dtype=grid_thw_dict[ps].device if torch.jit.is_tracing() else torch.int32,
             )
             cu = torch.unique_consecutive(cu)
             win_idx_dict[ps] = win
             win_cu_dict[ps] = cu
-            win_thw_dict[ps], _ = split_to_window(img_thw=grid_thw_dict[ps], win_size=112, patch_size=ps)
+            win_thw_dict[ps], _ = split_to_window(img_thw=img_thw_dict[ps], win_size=112, patch_size=ps)
 
         # import pdb;pdb.set_trace()
 
@@ -799,7 +801,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
 
         # import pdb;pdb.set_trace()
         # 3) window patchsize
-        win_adp_ps = random_sample_ps(win_cu_dict, patch_sizes, grid_thw_dict)
+        win_adp_ps = random_sample_ps(win_cu_dict, patch_sizes, img_thw_dict)
         # diffs, win_adp_ps = get_infer_adp_win_patchsize(win_feat_dict, win_thw_dict, win_cu_dict)
         # window_adp_ps = random_window_ps(cu_window_seqlens_ps, patch_sizes)
 
@@ -812,27 +814,22 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
             pos_emb_dict,
             win_idx_dict,
             win_cu_dict,
-            grid_thw_dict,
+            img_thw_dict,
             self.spatial_merge_unit,
             self.spatial_merge_size
         )
 
         # update cu seq lens
-        cu_tmp = torch.repeat_interleave(grid_thw[:, 1] * grid_thw[:, 2], grid_thw[:, 0]).cumsum(
+        img_thw_tmp = next(iter(img_thw_dict.values()))
+        img_cu_tmp = torch.repeat_interleave(img_thw_tmp[:, 1] * img_thw_tmp[:, 2], img_thw_tmp[:, 0]).cumsum(
             dim=0,
-            dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
+            dtype=img_thw_tmp.dtype if torch.jit.is_tracing() else torch.int32,
         )
-        cu_tmp = F.pad(cu_tmp, (1, 0), value=0)
-        _, cu_win_tmp = self.get_window_index(grid_thw, patch_size=self.patch_size)
-        cu_win_tmp = torch.tensor(
-            cu_win_tmp,
-            device=hidden_states.device,
-            dtype=grid_thw.dtype if torch.jit.is_tracing() else torch.int32,
-        )
-        cu_win_tmp = torch.unique_consecutive(cu_win_tmp)
-        cu_win_tmp = cu_win_tmp.tolist()
-        cu_seqlens = [cu_window_seqlens[cu_win_tmp.index(seq)] for seq in cu_tmp]
-        cu_seqlens = torch.tensor(cu_seqlens, device=cu_tmp.device, dtype=cu_tmp.dtype)
+        img_cu_tmp = F.pad(img_cu_tmp, (1, 0), value=0)
+        win_cu_tmp= next(iter(win_cu_dict.values())).tolist()
+
+        cu_seqlens = [cu_window_seqlens[win_cu_tmp.index(seq)] for seq in img_cu_tmp]
+        cu_seqlens = torch.tensor(cu_seqlens, device=img_cu_tmp.device, dtype=img_cu_tmp.dtype)
 
         # import pdb;pdb.set_trace()
 
@@ -1928,18 +1925,27 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
         video_embeds = self.visual(pixel_values_videos, grid_thw=video_grid_thw)
         return video_embeds
 
-    def get_image_features(self, pixel_values: torch.FloatTensor, image_grid_thw: Optional[torch.LongTensor] = None):
-        """
-        Encodes images into continuous embeddings that can be forwarded to the language model.
+    # def get_image_features(self, pixel_values: torch.FloatTensor, image_grid_thw: Optional[torch.LongTensor] = None):
+    #     """
+    #     Encodes images into continuous embeddings that can be forwarded to the language model.
+    #
+    #     Args:
+    #         pixel_values (`torch.FloatTensor` of shape `(batch_size, num_channels, image_size, image_size)`):
+    #             The tensors corresponding to the input images.
+    #         image_grid_thw (`torch.LongTensor` of shape `(num_images, 3)`, *optional*):
+    #             The temporal, height and width of feature shape of each image in LLM.
+    #     """
+    #     pixel_values = pixel_values.type(self.visual.dtype)
+    #     image_embeds = self.visual(pixel_values, grid_thw=image_grid_thw)
+    #     return image_embeds
 
-        Args:
-            pixel_values (`torch.FloatTensor` of shape `(batch_size, num_channels, image_size, image_size)`):
-                The tensors corresponding to the input images.
-            image_grid_thw (`torch.LongTensor` of shape `(num_images, 3)`, *optional*):
-                The temporal, height and width of feature shape of each image in LLM.
-        """
-        pixel_values = pixel_values.type(self.visual.dtype)
-        image_embeds = self.visual(pixel_values, grid_thw=image_grid_thw)
+    def get_image_features(
+            self,
+            pixel_values_dict: Dict[int, torch.Tensor],
+            image_grid_thw_dict: Optional[Dict[int, torch.Tensor]] = None,
+    ):
+        pixel_values_dict = {k: v.type(self.visual.dtype) for k, v in pixel_values_dict.items()}
+        image_embeds = self.visual(pixel_values_dict, grid_thw=image_grid_thw_dict)
         return image_embeds
 
     @auto_docstring
@@ -1962,6 +1968,13 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             cache_position: Optional[torch.LongTensor] = None,
             second_per_grid_ts: Optional[torch.Tensor] = None,
             labels: Optional[torch.LongTensor] = None,
+            # ✅ extra patch size inputs
+            pixel_values_ps7: Optional[torch.Tensor] = None,
+            image_grid_thw_ps7: Optional[torch.LongTensor] = None,
+            pixel_values_ps14: Optional[torch.Tensor] = None,
+            image_grid_thw_ps14: Optional[torch.LongTensor] = None,
+            pixel_values_ps28: Optional[torch.Tensor] = None,
+            image_grid_thw_ps28: Optional[torch.LongTensor] = None,
     ) -> Union[Tuple, Qwen2_5_VLModelOutputWithPast]:
         r"""
         pixel_values_videos (`torch.FloatTensor` of shape `(seq_length, num_channels * temporal_size * image_size * image_size)):
@@ -1988,7 +2001,20 @@ class Qwen2_5_VLModel(Qwen2_5_VLPreTrainedModel):
             inputs_embeds = self.get_input_embeddings()(input_ids)
             if pixel_values is not None:
                 # import pdb;pdb.set_trace()
-                image_embeds, token_itxy = self.get_image_features(pixel_values, image_grid_thw)
+                # image_embeds, token_itxy = self.get_image_features(pixel_values, image_grid_thw)
+                pixel_values_dict = {
+                    7: pixel_values_ps7,
+                    14: pixel_values_ps14,
+                    28: pixel_values_ps28,
+                }
+
+                image_grid_thw_dict = {
+                    7: image_grid_thw_ps7,
+                    14: image_grid_thw_ps14,
+                    28: image_grid_thw_ps28,
+                }
+                image_embeds, token_itxy = self.get_image_features(pixel_values_dict,image_grid_thw_dict)
+
                 # import pdb;pdb.set_trace()
                 position_ids = update_position_ids(position_ids=position_ids, token_itxy=token_itxy, ids=input_ids,
                                                    img_id=self.config.image_token_id)
@@ -2200,6 +2226,7 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
             second_per_grid_ts: Optional[torch.Tensor] = None,
             pixel_values_ps7: Optional[torch.Tensor] = None,
             image_grid_thw_ps7: Optional[torch.LongTensor] = None,
+            # ✅ extra patch size inputs
             pixel_values_ps14: Optional[torch.Tensor] = None,
             image_grid_thw_ps14: Optional[torch.LongTensor] = None,
             pixel_values_ps28: Optional[torch.Tensor] = None,
@@ -2277,6 +2304,13 @@ class Qwen2_5_VLForConditionalGeneration(Qwen2_5_VLPreTrainedModel, GenerationMi
             return_dict=return_dict,
             cache_position=cache_position,
             labels=labels,
+            # ✅ extra patch size inputs
+            pixel_values_ps7=pixel_values_ps7,
+            image_grid_thw_ps7=image_grid_thw_ps7,
+            pixel_values_ps14=pixel_values_ps14,
+            image_grid_thw_ps14=image_grid_thw_ps14,
+            pixel_values_ps28=pixel_values_ps28,
+            image_grid_thw_ps28=image_grid_thw_ps28,
         )
 
         hidden_states = outputs[0]
