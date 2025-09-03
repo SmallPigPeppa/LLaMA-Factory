@@ -101,12 +101,13 @@ def split_to_window(
                 )
 
     coords = torch.cat(coord_chunks, dim=0)  # [N_patch, 4]
+    import pdb;pdb.set_trace()
     idx_merge = flatten_to_merge_idx(grid_thw=img_thw, merge_size=2)
     coords = coords[idx_merge]
 
     win_thw = img_thw.new_tensor(win_thw)  # [B_window, 3]
 
-    import pdb; pdb.set_trace()
+
 
     return win_thw, coords
 
