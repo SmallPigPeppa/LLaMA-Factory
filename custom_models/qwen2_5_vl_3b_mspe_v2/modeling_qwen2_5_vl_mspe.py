@@ -847,7 +847,7 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPreTrainedModel):
         hidden_states = self.merger(hidden_states)
         seq_len, _ = win_coord.size()
         coord_merge = win_coord.view(seq_len // self.spatial_merge_unit, self.spatial_merge_unit, -1)[:, 0, :]
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
 
 
         gcd_val = reduce(torch.gcd, coord_merge[:, -2:].flatten())
